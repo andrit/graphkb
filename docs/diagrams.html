@@ -1,0 +1,1239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rhizomatic — Architecture Diagrams</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap');
+
+  :root {
+    --bg: #FAFAF8;
+    --bg2: #F2F0EB;
+    --bg3: #E8E6E0;
+    --text: #1A1A18;
+    --text2: #5A5A56;
+    --text3: #8A8A84;
+    --border: rgba(0,0,0,0.1);
+    --border-h: rgba(0,0,0,0.2);
+    --accent: #534AB7;
+    --accent-light: #EEEDFE;
+    --teal: #0F6E56;
+    --teal-light: #E1F5EE;
+    --coral: #993C1D;
+    --coral-light: #FAECE7;
+    --blue: #185FA5;
+    --blue-light: #E6F1FB;
+    --purple: #534AB7;
+    --purple-light: #EEEDFE;
+    --amber: #854F0B;
+    --amber-light: #FAEEDA;
+    --gray-fill: #F1EFE8;
+    --gray-stroke: #B4B2A9;
+    --shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+    --shadow-lg: 0 10px 40px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.06);
+    --radius: 12px;
+    --font: 'IBM Plex Sans', -apple-system, sans-serif;
+    --mono: 'IBM Plex Mono', monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #141413;
+      --bg2: #1E1E1C;
+      --bg3: #2A2A27;
+      --text: #E8E6E0;
+      --text2: #A8A8A2;
+      --text3: #6A6A64;
+      --border: rgba(255,255,255,0.08);
+      --border-h: rgba(255,255,255,0.16);
+      --accent: #AFA9EC;
+      --accent-light: #26215C;
+      --teal-light: #04342C;
+      --coral-light: #4A1B0C;
+      --blue-light: #042C53;
+      --purple-light: #26215C;
+      --amber-light: #412402;
+      --gray-fill: #2C2C2A;
+      --gray-stroke: #5F5E5A;
+      --shadow: 0 1px 3px rgba(0,0,0,0.3);
+      --shadow-lg: 0 10px 40px rgba(0,0,0,0.5), 0 2px 8px rgba(0,0,0,0.3);
+    }
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: var(--font);
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.7;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .page-header {
+    padding: 60px 40px 40px;
+    max-width: 960px;
+    margin: 0 auto;
+  }
+
+  .page-header h1 {
+    font-size: 32px;
+    font-weight: 600;
+    letter-spacing: -0.5px;
+    margin-bottom: 8px;
+  }
+
+  .page-header .subtitle {
+    font-size: 15px;
+    color: var(--text2);
+    font-weight: 400;
+  }
+
+  .page-header .updated {
+    font-size: 12px;
+    color: var(--text3);
+    font-family: var(--mono);
+    margin-top: 12px;
+  }
+
+  .toc {
+    max-width: 960px;
+    margin: 0 auto 40px;
+    padding: 0 40px;
+  }
+
+  .toc-inner {
+    background: var(--bg2);
+    border-radius: var(--radius);
+    padding: 20px 24px;
+    border: 1px solid var(--border);
+  }
+
+  .toc h2 {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text3);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 10px;
+  }
+
+  .toc a {
+    display: block;
+    color: var(--accent);
+    text-decoration: none;
+    font-size: 14px;
+    padding: 4px 0;
+    transition: opacity 0.15s;
+  }
+
+  .toc a:hover { opacity: 0.7; }
+
+  .diagram-section {
+    max-width: 960px;
+    margin: 0 auto 60px;
+    padding: 0 40px;
+  }
+
+  .diagram-card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    box-shadow: var(--shadow);
+    transition: box-shadow 0.2s;
+  }
+
+  .diagram-card:hover { box-shadow: var(--shadow-lg); }
+
+  .diagram-header {
+    padding: 24px 28px 20px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .diagram-header h2 {
+    font-size: 20px;
+    font-weight: 500;
+    margin-bottom: 6px;
+  }
+
+  .diagram-header p {
+    font-size: 14px;
+    color: var(--text2);
+    max-width: 600px;
+  }
+
+  .diagram-body {
+    padding: 32px 28px;
+    display: flex;
+    justify-content: center;
+    overflow-x: auto;
+  }
+
+  .diagram-body svg {
+    max-width: 100%;
+    height: auto;
+  }
+
+  .diagram-body svg text { font-family: var(--font); }
+  .diagram-body svg .th { font-size: 14px; font-weight: 500; fill: var(--text); }
+  .diagram-body svg .ts { font-size: 12px; font-weight: 400; fill: var(--text2); }
+  .diagram-body svg .t  { font-size: 14px; font-weight: 400; fill: var(--text); }
+
+  .diagram-body svg .arr {
+    stroke: var(--text3);
+    stroke-width: 1.5;
+    fill: none;
+  }
+
+  .diagram-body svg .leader {
+    stroke: var(--text3);
+    stroke-width: 0.5;
+    stroke-dasharray: 3 3;
+    fill: none;
+  }
+
+  .diagram-body svg .box rect {
+    fill: var(--bg2);
+    stroke: var(--gray-stroke);
+  }
+
+  /* Color ramps */
+  .diagram-body svg .c-teal rect { fill: var(--teal-light); stroke: var(--teal); stroke-opacity: 0.4; }
+  .diagram-body svg .c-teal .th, .diagram-body svg .c-teal .t { fill: var(--teal); }
+  .diagram-body svg .c-teal .ts { fill: var(--teal); opacity: 0.75; }
+
+  .diagram-body svg .c-purple rect { fill: var(--purple-light); stroke: var(--purple); stroke-opacity: 0.4; }
+  .diagram-body svg .c-purple .th, .diagram-body svg .c-purple .t { fill: var(--purple); }
+  .diagram-body svg .c-purple .ts { fill: var(--purple); opacity: 0.75; }
+
+  .diagram-body svg .c-coral rect { fill: var(--coral-light); stroke: var(--coral); stroke-opacity: 0.4; }
+  .diagram-body svg .c-coral .th, .diagram-body svg .c-coral .t { fill: var(--coral); }
+  .diagram-body svg .c-coral .ts { fill: var(--coral); opacity: 0.75; }
+
+  .diagram-body svg .c-blue rect { fill: var(--blue-light); stroke: var(--blue); stroke-opacity: 0.4; }
+  .diagram-body svg .c-blue .th, .diagram-body svg .c-blue .t { fill: var(--blue); }
+  .diagram-body svg .c-blue .ts { fill: var(--blue); opacity: 0.75; }
+
+  .diagram-body svg .c-gray rect { fill: var(--gray-fill); stroke: var(--gray-stroke); stroke-opacity: 0.4; }
+  .diagram-body svg .c-gray .th, .diagram-body svg .c-gray .t { fill: var(--text); }
+  .diagram-body svg .c-gray .ts { fill: var(--text2); }
+
+  .diagram-body svg .c-amber rect { fill: var(--amber-light); stroke: var(--amber); stroke-opacity: 0.4; }
+  .diagram-body svg .c-amber .th, .diagram-body svg .c-amber .t { fill: var(--amber); }
+  .diagram-body svg .c-amber .ts { fill: var(--amber); opacity: 0.75; }
+
+  .diagram-body svg .node { cursor: pointer; }
+  .diagram-body svg .node:hover { opacity: 0.8; }
+
+  /* Modal */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 100;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    animation: fadeIn 0.15s ease;
+  }
+
+  .modal-overlay.active { display: flex; }
+
+  .modal {
+    background: var(--bg);
+    border: 1px solid var(--border-h);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-lg);
+    max-width: 560px;
+    width: 100%;
+    max-height: 80vh;
+    overflow-y: auto;
+    animation: slideUp 0.2s ease;
+  }
+
+  .modal-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding: 20px 24px 16px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .modal-head h3 {
+    font-size: 17px;
+    font-weight: 500;
+    line-height: 1.4;
+    padding-right: 16px;
+  }
+
+  .modal-close {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    width: 28px;
+    height: 28px;
+    font-size: 16px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text2);
+    flex-shrink: 0;
+    transition: background 0.15s;
+  }
+
+  .modal-close:hover { background: var(--bg3); }
+
+  .modal-body {
+    padding: 20px 24px 24px;
+    font-size: 14px;
+    line-height: 1.7;
+    color: var(--text2);
+  }
+
+  .modal-body strong { color: var(--text); font-weight: 500; }
+
+  .modal-body code {
+    font-family: var(--mono);
+    font-size: 12px;
+    background: var(--bg3);
+    padding: 2px 6px;
+    border-radius: 4px;
+  }
+
+  .modal-tag {
+    display: inline-block;
+    font-size: 11px;
+    font-family: var(--mono);
+    padding: 2px 8px;
+    border-radius: 4px;
+    margin-bottom: 12px;
+  }
+
+  .modal-tag.ts-tag { background: var(--blue-light); color: var(--blue); }
+  .modal-tag.py-tag { background: var(--purple-light); color: var(--purple); }
+  .modal-tag.infra-tag { background: var(--amber-light); color: var(--amber); }
+
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes slideUp { from { transform: translateY(12px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+  @media (max-width: 680px) {
+    .page-header { padding: 40px 20px 28px; }
+    .toc, .diagram-section { padding: 0 20px; }
+    .diagram-header { padding: 20px; }
+    .diagram-body { padding: 20px 16px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="page-header">
+  <h1>Rhizomatic</h1>
+  <p class="subtitle">A rhizomatic knowledge base — architecture diagrams and design artifacts</p>
+  <p class="updated">Updated 2026-03-28</p>
+</div>
+
+<div class="toc">
+  <div class="toc-inner">
+    <h2>Diagrams</h2>
+    <a href="#system-architecture">1. System architecture</a>
+    <a href="#project-structure">2. Project structure (monorepo)</a>
+    <a href="#docker-infrastructure">3. Docker Compose infrastructure</a>
+    <a href="#graph-ontology">4. Graph data model (ontology)</a>
+    <a href="#ingestion-example">5. Concrete ingestion example</a>
+  </div>
+</div>
+
+<!-- ─────────────────── DIAGRAM 1: System Architecture ─────────────────── -->
+<div class="diagram-section" id="system-architecture">
+  <div class="diagram-card">
+    <div class="diagram-header">
+      <h2>System architecture</h2>
+      <p>The five-layer pipeline from content ingestion through to the user interface. Each layer is a set of composable pure functions with typed inputs and outputs. Click any component to learn more.</p>
+    </div>
+    <div class="diagram-body">
+      <svg width="100%" viewBox="0 0 680 720" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <marker id="a1" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+            <path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </marker>
+        </defs>
+
+        <!-- Ingestion -->
+        <g class="c-teal">
+          <rect x="40" y="30" width="600" height="100" rx="16" stroke-width="0.5"/>
+          <text class="th" x="340" y="55" text-anchor="middle">Ingestion layer</text>
+        </g>
+        <g class="node c-teal" onclick="showModal('documents')">
+          <rect x="60" y="70" width="130" height="44" rx="8" stroke-width="0.5"/>
+          <text class="ts" x="125" y="92" text-anchor="middle" dominant-baseline="central">Documents</text>
+        </g>
+        <g class="node c-teal" onclick="showModal('tables')">
+          <rect x="200" y="70" width="130" height="44" rx="8" stroke-width="0.5"/>
+          <text class="ts" x="265" y="92" text-anchor="middle" dominant-baseline="central">Tables / CSV</text>
+        </g>
+        <g class="node c-teal" onclick="showModal('web')">
+          <rect x="340" y="70" width="130" height="44" rx="8" stroke-width="0.5"/>
+          <text class="ts" x="405" y="92" text-anchor="middle" dominant-baseline="central">Web / URLs</text>
+        </g>
+        <g class="node c-teal" onclick="showModal('images')">
+          <rect x="480" y="70" width="140" height="44" rx="8" stroke-width="0.5"/>
+          <text class="ts" x="550" y="92" text-anchor="middle" dominant-baseline="central">Images / OCR</text>
+        </g>
+
+        <line x1="340" y1="130" x2="340" y2="170" class="arr" marker-end="url(#a1)"/>
+
+        <!-- Processing -->
+        <g class="c-purple">
+          <rect x="40" y="170" width="600" height="100" rx="16" stroke-width="0.5"/>
+          <text class="th" x="340" y="195" text-anchor="middle">Processing and extraction</text>
+        </g>
+        <g class="node c-purple" onclick="showModal('chunking')">
+          <rect x="60" y="210" width="135" height="44" rx="8" stroke-width="0.5"/>
+          <text class="ts" x="127" y="232" text-anchor="middle" dominant-baseline="central">Chunking / NLP</text>
+        </g>
+        <g class="node c-purple" onclick="showModal('entities')">
+          <rect x="205" y="210" width="145" height="44" rx="8" stroke-width="0.5"/>
+          <text class="ts" x="277" y="232" text-anchor="middle" dominant-baseline="central">Entity extraction</text>
+        </g>
+        <g class="node c-purple" onclick="showModal('metadata')">
+          <rect x="360" y="210" width="130" height="44" rx="8" stroke-width="0.5"/>
+          <text class="ts" x="425" y="232" text-anchor="middle" dominant-baseline="central">Metadata tagging</text>
+        </g>
+        <g class="node c-purple" onclick="showModal('embeddings')">
+          <rect x="500" y="210" width="120" height="44" rx="8" stroke-width="0.5"/>
+          <text class="ts" x="560" y="232" text-anchor="middle" dominant-baseline="central">Embeddings</text>
+        </g>
+
+        <line x1="340" y1="270" x2="340" y2="310" class="arr" marker-end="url(#a1)"/>
+
+        <!-- Storage -->
+        <g class="c-coral">
+          <rect x="40" y="310" width="600" height="120" rx="16" stroke-width="0.5"/>
+          <text class="th" x="340" y="335" text-anchor="middle">Storage layer</text>
+        </g>
+        <g class="node c-coral" onclick="showModal('neo4j')">
+          <rect x="60" y="350" width="170" height="56" rx="8" stroke-width="0.5"/>
+          <text class="th" x="145" y="370" text-anchor="middle" dominant-baseline="central">Neo4j</text>
+          <text class="ts" x="145" y="390" text-anchor="middle" dominant-baseline="central">Knowledge graph</text>
+        </g>
+        <g class="node c-coral" onclick="showModal('elasticsearch')">
+          <rect x="255" y="350" width="170" height="56" rx="8" stroke-width="0.5"/>
+          <text class="th" x="340" y="370" text-anchor="middle" dominant-baseline="central">Elasticsearch</text>
+          <text class="ts" x="340" y="390" text-anchor="middle" dominant-baseline="central">Search index</text>
+        </g>
+        <g class="node c-coral" onclick="showModal('filestore')">
+          <rect x="450" y="350" width="170" height="56" rx="8" stroke-width="0.5"/>
+          <text class="th" x="535" y="370" text-anchor="middle" dominant-baseline="central">File store</text>
+          <text class="ts" x="535" y="390" text-anchor="middle" dominant-baseline="central">Original documents</text>
+        </g>
+
+        <line x1="230" y1="378" x2="253" y2="378" stroke="var(--text3)" stroke-width="0.5" stroke-dasharray="3 3" marker-end="url(#a1)"/>
+        <line x1="253" y1="388" x2="230" y2="388" stroke="var(--text3)" stroke-width="0.5" stroke-dasharray="3 3" marker-end="url(#a1)"/>
+
+        <line x1="340" y1="430" x2="340" y2="470" class="arr" marker-end="url(#a1)"/>
+
+        <!-- API -->
+        <g class="node c-gray" onclick="showModal('api')">
+          <rect x="170" y="470" width="340" height="50" rx="12" stroke-width="0.5"/>
+          <text class="th" x="340" y="495" text-anchor="middle" dominant-baseline="central">API layer (GraphQL / REST)</text>
+        </g>
+
+        <line x1="340" y1="520" x2="340" y2="560" class="arr" marker-end="url(#a1)"/>
+
+        <!-- Interface -->
+        <g class="c-blue">
+          <rect x="40" y="560" width="600" height="100" rx="16" stroke-width="0.5"/>
+          <text class="th" x="340" y="585" text-anchor="middle">Interface layer</text>
+        </g>
+        <g class="node c-blue" onclick="showModal('wiki')">
+          <rect x="60" y="600" width="170" height="44" rx="8" stroke-width="0.5"/>
+          <text class="ts" x="145" y="622" text-anchor="middle" dominant-baseline="central">Wiki browser</text>
+        </g>
+        <g class="node c-blue" onclick="showModal('search-ui')">
+          <rect x="255" y="600" width="170" height="44" rx="8" stroke-width="0.5"/>
+          <text class="ts" x="340" y="622" text-anchor="middle" dominant-baseline="central">Search interface</text>
+        </g>
+        <g class="node c-blue" onclick="showModal('graph-explorer')">
+          <rect x="450" y="600" width="170" height="44" rx="8" stroke-width="0.5"/>
+          <text class="ts" x="535" y="622" text-anchor="middle" dominant-baseline="central">Graph explorer</text>
+        </g>
+
+        <!-- Future -->
+        <rect x="170" y="680" width="340" height="30" rx="8" fill="none" stroke="var(--text3)" stroke-width="0.5" stroke-dasharray="4 4"/>
+        <text class="ts" x="340" y="700" text-anchor="middle">Phase 2: LLM + GraphRAG</text>
+      </svg>
+    </div>
+  </div>
+</div>
+
+<!-- ─────────────────── DIAGRAM 2: Project Structure ─────────────────── -->
+<div class="diagram-section" id="project-structure">
+  <div class="diagram-card">
+    <div class="diagram-header">
+      <h2>Project structure</h2>
+      <p>Monorepo layout with pnpm workspaces and Turborepo. TypeScript packages on the left, Python services on the right, connected via a Redis/BullMQ message queue. Click any package for details.</p>
+    </div>
+    <div class="diagram-body">
+      <svg width="100%" viewBox="0 0 680 860" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <marker id="a2" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+            <path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </marker>
+        </defs>
+
+        <!-- Root -->
+        <g class="c-gray">
+          <rect x="40" y="20" width="600" height="820" rx="20" stroke-width="0.5"/>
+          <text class="th" x="60" y="50">rhizomatic/</text>
+          <text class="ts" x="60" y="68">Monorepo root (pnpm workspaces + turborepo)</text>
+        </g>
+
+        <!-- TS packages -->
+        <g class="c-blue">
+          <rect x="60" y="90" width="280" height="620" rx="14" stroke-width="0.5"/>
+          <text class="th" x="80" y="115">packages/ (TypeScript)</text>
+        </g>
+
+        <g class="node c-blue" onclick="showModal('pkg-common')">
+          <rect x="80" y="130" width="240" height="56" rx="8" stroke-width="0.5"/>
+          <text class="th" x="200" y="150" text-anchor="middle" dominant-baseline="central">@rhizomatic/common</text>
+          <text class="ts" x="200" y="170" text-anchor="middle" dominant-baseline="central">Shared types, utilities, config</text>
+        </g>
+        <g class="node c-blue" onclick="showModal('pkg-graph')">
+          <rect x="80" y="200" width="240" height="56" rx="8" stroke-width="0.5"/>
+          <text class="th" x="200" y="220" text-anchor="middle" dominant-baseline="central">@rhizomatic/graph</text>
+          <text class="ts" x="200" y="240" text-anchor="middle" dominant-baseline="central">Neo4j client, Cypher, ontology</text>
+        </g>
+        <g class="node c-blue" onclick="showModal('pkg-search')">
+          <rect x="80" y="270" width="240" height="56" rx="8" stroke-width="0.5"/>
+          <text class="th" x="200" y="290" text-anchor="middle" dominant-baseline="central">@rhizomatic/search</text>
+          <text class="ts" x="200" y="310" text-anchor="middle" dominant-baseline="central">Elasticsearch client, indexing</text>
+        </g>
+        <g class="node c-blue" onclick="showModal('pkg-ingestion')">
+          <rect x="80" y="340" width="240" height="56" rx="8" stroke-width="0.5"/>
+          <text class="th" x="200" y="360" text-anchor="middle" dominant-baseline="central">@rhizomatic/ingestion</text>
+          <text class="ts" x="200" y="380" text-anchor="middle" dominant-baseline="central">Job queue, orchestration</text>
+        </g>
+        <g class="node c-blue" onclick="showModal('pkg-api')">
+          <rect x="80" y="410" width="240" height="56" rx="8" stroke-width="0.5"/>
+          <text class="th" x="200" y="430" text-anchor="middle" dominant-baseline="central">@rhizomatic/api</text>
+          <text class="ts" x="200" y="450" text-anchor="middle" dominant-baseline="central">GraphQL / REST server</text>
+        </g>
+        <g class="node c-blue" onclick="showModal('pkg-web')">
+          <rect x="80" y="480" width="240" height="56" rx="8" stroke-width="0.5"/>
+          <text class="th" x="200" y="500" text-anchor="middle" dominant-baseline="central">@rhizomatic/web</text>
+          <text class="ts" x="200" y="520" text-anchor="middle" dominant-baseline="central">Frontend (Next.js)</text>
+        </g>
+        <g class="node c-blue" onclick="showModal('pkg-storage')">
+          <rect x="80" y="550" width="240" height="56" rx="8" stroke-width="0.5"/>
+          <text class="th" x="200" y="570" text-anchor="middle" dominant-baseline="central">@rhizomatic/storage</text>
+          <text class="ts" x="200" y="590" text-anchor="middle" dominant-baseline="central">File storage abstraction</text>
+        </g>
+        <g class="node c-blue" onclick="showModal('pkg-cli')">
+          <rect x="80" y="620" width="240" height="56" rx="8" stroke-width="0.5"/>
+          <text class="th" x="200" y="640" text-anchor="middle" dominant-baseline="central">@rhizomatic/cli</text>
+          <text class="ts" x="200" y="660" text-anchor="middle" dominant-baseline="central">Admin and dev tooling</text>
+        </g>
+
+        <!-- Python services -->
+        <g class="c-purple">
+          <rect x="360" y="90" width="270" height="290" rx="14" stroke-width="0.5"/>
+          <text class="th" x="380" y="115">services/ (Python)</text>
+        </g>
+        <g class="node c-purple" onclick="showModal('svc-processor')">
+          <rect x="380" y="130" width="230" height="56" rx="8" stroke-width="0.5"/>
+          <text class="th" x="495" y="150" text-anchor="middle" dominant-baseline="central">processor</text>
+          <text class="ts" x="495" y="170" text-anchor="middle" dominant-baseline="central">NLP, chunking, entities</text>
+        </g>
+        <g class="node c-purple" onclick="showModal('svc-embedder')">
+          <rect x="380" y="200" width="230" height="56" rx="8" stroke-width="0.5"/>
+          <text class="th" x="495" y="220" text-anchor="middle" dominant-baseline="central">embedder</text>
+          <text class="ts" x="495" y="240" text-anchor="middle" dominant-baseline="central">Vector embeddings</text>
+        </g>
+        <g class="node c-purple" onclick="showModal('svc-ocr')">
+          <rect x="380" y="270" width="230" height="56" rx="8" stroke-width="0.5"/>
+          <text class="th" x="495" y="290" text-anchor="middle" dominant-baseline="central">ocr</text>
+          <text class="ts" x="495" y="310" text-anchor="middle" dominant-baseline="central">Image text extraction</text>
+        </g>
+
+        <!-- Queue label -->
+        <text class="ts" x="345" y="440" text-anchor="middle" transform="rotate(90,345,440)">Redis / BullMQ</text>
+        <line x1="320" y1="370" x2="378" y2="310" stroke="var(--text3)" stroke-width="0.5" stroke-dasharray="3 3" marker-end="url(#a2)"/>
+        <line x1="378" y1="270" x2="320" y2="340" stroke="var(--text3)" stroke-width="0.5" stroke-dasharray="3 3" marker-end="url(#a2)"/>
+
+        <!-- Infra -->
+        <g class="c-gray">
+          <rect x="360" y="410" width="270" height="120" rx="14" stroke-width="0.5"/>
+          <text class="th" x="380" y="435">infra/</text>
+        </g>
+        <g class="node c-gray" onclick="showModal('infra-docker')">
+          <rect x="380" y="450" width="230" height="56" rx="8" stroke-width="0.5"/>
+          <text class="th" x="495" y="470" text-anchor="middle" dominant-baseline="central">docker-compose</text>
+          <text class="ts" x="495" y="490" text-anchor="middle" dominant-baseline="central">Neo4j, ES, Redis</text>
+        </g>
+
+        <!-- Docs -->
+        <g class="c-amber">
+          <rect x="360" y="550" width="270" height="80" rx="14" stroke-width="0.5"/>
+          <text class="th" x="380" y="575">docs/</text>
+          <text class="ts" x="380" y="595">ADRs, guides, ontology spec</text>
+        </g>
+
+        <!-- Legend -->
+        <rect x="380" y="660" width="12" height="12" rx="3" fill="var(--blue-light)" stroke="var(--blue)" stroke-width="0.5"/>
+        <text class="ts" x="398" y="671">TypeScript packages</text>
+        <rect x="380" y="682" width="12" height="12" rx="3" fill="var(--purple-light)" stroke="var(--purple)" stroke-width="0.5"/>
+        <text class="ts" x="398" y="693">Python services</text>
+        <rect x="380" y="704" width="12" height="12" rx="3" fill="var(--gray-fill)" stroke="var(--gray-stroke)" stroke-width="0.5"/>
+        <text class="ts" x="398" y="715">Infrastructure / config</text>
+        <rect x="380" y="726" width="12" height="12" rx="3" fill="var(--amber-light)" stroke="var(--amber)" stroke-width="0.5"/>
+        <text class="ts" x="398" y="737">Documentation</text>
+      </svg>
+    </div>
+  </div>
+</div>
+
+<!-- ─────────────────── DIAGRAM 3: Docker Infrastructure ─────────────────── -->
+<div class="diagram-section" id="docker-infrastructure">
+  <div class="diagram-card">
+    <div class="diagram-header">
+      <h2>Docker Compose infrastructure</h2>
+      <p>Three containerized services provide the data layer. Application code runs on the host for fast iteration. Named volumes persist data across restarts. Click any service for configuration details.</p>
+    </div>
+    <div class="diagram-body">
+      <svg width="100%" viewBox="0 0 680 480" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <marker id="a3" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+            <path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </marker>
+        </defs>
+
+        <rect x="40" y="20" width="600" height="440" rx="20" fill="none" stroke="var(--text2)" stroke-width="0.5" stroke-dasharray="6 4"/>
+        <text class="ts" x="60" y="44">Docker Compose network: rhizomatic-net</text>
+
+        <g class="node c-teal" onclick="showModal('dc-neo4j')">
+          <rect x="60" y="70" width="180" height="130" rx="12" stroke-width="0.5"/>
+          <text class="th" x="150" y="98" text-anchor="middle">Neo4j 5.x</text>
+          <text class="ts" x="150" y="118" text-anchor="middle">Graph database</text>
+          <text class="ts" x="150" y="150" text-anchor="middle">:7474 browser</text>
+          <text class="ts" x="150" y="168" text-anchor="middle">:7687 bolt</text>
+        </g>
+
+        <g class="node c-purple" onclick="showModal('dc-elasticsearch')">
+          <rect x="260" y="70" width="180" height="130" rx="12" stroke-width="0.5"/>
+          <text class="th" x="350" y="98" text-anchor="middle">Elasticsearch 8.x</text>
+          <text class="ts" x="350" y="118" text-anchor="middle">Search engine</text>
+          <text class="ts" x="350" y="150" text-anchor="middle">:9200 REST</text>
+          <text class="ts" x="350" y="168" text-anchor="middle">:9300 transport</text>
+        </g>
+
+        <g class="node c-coral" onclick="showModal('dc-redis')">
+          <rect x="460" y="70" width="170" height="130" rx="12" stroke-width="0.5"/>
+          <text class="th" x="545" y="98" text-anchor="middle">Redis 7.x</text>
+          <text class="ts" x="545" y="118" text-anchor="middle">Queue + cache</text>
+          <text class="ts" x="545" y="150" text-anchor="middle">:6379</text>
+        </g>
+
+        <g class="c-gray">
+          <rect x="60" y="230" width="180" height="44" rx="8" stroke-width="0.5"/>
+          <text class="ts" x="150" y="256" text-anchor="middle" dominant-baseline="central">neo4j-data volume</text>
+        </g>
+        <g class="c-gray">
+          <rect x="260" y="230" width="180" height="44" rx="8" stroke-width="0.5"/>
+          <text class="ts" x="350" y="256" text-anchor="middle" dominant-baseline="central">es-data volume</text>
+        </g>
+        <g class="c-gray">
+          <rect x="460" y="230" width="170" height="44" rx="8" stroke-width="0.5"/>
+          <text class="ts" x="545" y="256" text-anchor="middle" dominant-baseline="central">redis-data volume</text>
+        </g>
+
+        <line x1="150" y1="200" x2="150" y2="228" class="arr" marker-end="url(#a3)"/>
+        <line x1="350" y1="200" x2="350" y2="228" class="arr" marker-end="url(#a3)"/>
+        <line x1="545" y1="200" x2="545" y2="228" class="arr" marker-end="url(#a3)"/>
+
+        <rect x="60" y="310" width="570" height="80" rx="12" fill="none" stroke="var(--text2)" stroke-width="0.5" stroke-dasharray="4 3"/>
+        <text class="th" x="345" y="340" text-anchor="middle">Your application code (runs on host)</text>
+        <text class="ts" x="345" y="360" text-anchor="middle">TypeScript API + Workers | Python services | Next.js dev server</text>
+
+        <line x1="150" y1="310" x2="150" y2="276" stroke="var(--text2)" stroke-width="0.5" stroke-dasharray="3 3" marker-end="url(#a3)"/>
+        <line x1="350" y1="310" x2="350" y2="276" stroke="var(--text2)" stroke-width="0.5" stroke-dasharray="3 3" marker-end="url(#a3)"/>
+        <line x1="545" y1="310" x2="545" y2="276" stroke="var(--text2)" stroke-width="0.5" stroke-dasharray="3 3" marker-end="url(#a3)"/>
+
+        <g class="c-gray">
+          <rect x="60" y="420" width="180" height="30" rx="6" stroke-width="0.5"/>
+          <text class="ts" x="150" y="440" text-anchor="middle" dominant-baseline="central">./data/files (local disk)</text>
+        </g>
+        <text class="ts" x="345" y="418" text-anchor="middle">File storage (local, not containerized)</text>
+      </svg>
+    </div>
+  </div>
+</div>
+
+<!-- ─────────────────── DIAGRAM 4: Graph Ontology ─────────────────── -->
+<div class="diagram-section" id="graph-ontology">
+  <div class="diagram-card">
+    <div class="diagram-header">
+      <h2>Graph data model (ontology)</h2>
+      <p>Two layers: structural nodes (coral, system-created from ingestion) and semantic nodes (purple, discovered by NLP or curated by you). User-created nodes in teal. The RELATED_TO edge between entities is the rhizomatic connection that surfaces unexpected relationships. Click any node for details.</p>
+    </div>
+    <div class="diagram-body">
+      <svg width="100%" viewBox="0 0 680 520" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <marker id="a4" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+            <path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </marker>
+        </defs>
+
+        <g class="node c-coral" onclick="showModal('ont-document')">
+          <rect x="40" y="40" width="130" height="44" rx="8" stroke-width="0.5"/>
+          <text class="th" x="105" y="62" text-anchor="middle" dominant-baseline="central">Document</text>
+        </g>
+        <g class="node c-coral" onclick="showModal('ont-chunk')">
+          <rect x="275" y="40" width="130" height="44" rx="8" stroke-width="0.5"/>
+          <text class="th" x="340" y="62" text-anchor="middle" dominant-baseline="central">Chunk</text>
+        </g>
+        <g class="node c-coral" onclick="showModal('ont-source')">
+          <rect x="510" y="40" width="130" height="44" rx="8" stroke-width="0.5"/>
+          <text class="th" x="575" y="62" text-anchor="middle" dominant-baseline="central">Source</text>
+        </g>
+
+        <g class="node c-purple" onclick="showModal('ont-entity')">
+          <rect x="110" y="220" width="130" height="44" rx="8" stroke-width="0.5"/>
+          <text class="th" x="175" y="242" text-anchor="middle" dominant-baseline="central">Entity</text>
+        </g>
+        <g class="node c-purple" onclick="showModal('ont-topic')">
+          <rect x="410" y="220" width="130" height="44" rx="8" stroke-width="0.5"/>
+          <text class="th" x="475" y="242" text-anchor="middle" dominant-baseline="central">Topic</text>
+        </g>
+
+        <g class="node c-teal" onclick="showModal('ont-note')">
+          <rect x="110" y="400" width="130" height="44" rx="8" stroke-width="0.5"/>
+          <text class="th" x="175" y="422" text-anchor="middle" dominant-baseline="central">Note</text>
+        </g>
+        <g class="node c-teal" onclick="showModal('ont-tag')">
+          <rect x="410" y="400" width="130" height="44" rx="8" stroke-width="0.5"/>
+          <text class="th" x="475" y="422" text-anchor="middle" dominant-baseline="central">Tag</text>
+        </g>
+
+        <text class="ts" x="220" y="56" text-anchor="middle">HAS_CHUNK</text>
+        <line x1="170" y1="62" x2="273" y2="62" class="arr" marker-end="url(#a4)"/>
+
+        <text class="ts" x="460" y="56" text-anchor="middle">FROM_SOURCE</text>
+        <line x1="405" y1="62" x2="508" y2="62" class="arr" marker-end="url(#a4)"/>
+
+        <text class="ts" x="258" y="140" text-anchor="middle">MENTIONS</text>
+        <line x1="310" y1="84" x2="210" y2="218" class="arr" marker-end="url(#a4)"/>
+
+        <text class="ts" x="430" y="140" text-anchor="middle">ABOUT</text>
+        <line x1="370" y1="84" x2="450" y2="218" class="arr" marker-end="url(#a4)"/>
+
+        <text class="ts" x="300" y="255" text-anchor="middle">CONTAINS</text>
+        <line x1="410" y1="242" x2="242" y2="242" class="arr" marker-end="url(#a4)"/>
+
+        <text class="ts" x="544" y="330" text-anchor="middle">OVERLAPS</text>
+        <path d="M540 264 Q580 320 540 218" fill="none" class="arr" marker-end="url(#a4)"/>
+
+        <text class="ts" x="100" y="330" text-anchor="middle">RELATED_TO</text>
+        <path d="M120 264 Q70 320 120 218" fill="none" stroke="var(--text3)" stroke-width="1.5" marker-end="url(#a4)"/>
+
+        <text class="ts" x="175" y="370" text-anchor="middle">ANNOTATES</text>
+        <line x1="175" y1="398" x2="175" y2="266" stroke="var(--text2)" stroke-width="0.5" stroke-dasharray="3 3" marker-end="url(#a4)"/>
+
+        <text class="ts" x="350" y="465" text-anchor="middle">TAGGED (from any)</text>
+        <line x1="242" y1="440" x2="408" y2="430" stroke="var(--text2)" stroke-width="0.5" stroke-dasharray="3 3" marker-end="url(#a4)"/>
+        <line x1="242" y1="242" x2="408" y2="418" stroke="var(--text2)" stroke-width="0.5" stroke-dasharray="3 3" marker-end="url(#a4)"/>
+
+        <rect x="32" y="488" width="12" height="12" rx="3" fill="var(--coral-light)" stroke="var(--coral)" stroke-width="0.5"/>
+        <text class="ts" x="50" y="499">Structural (system)</text>
+        <rect x="195" y="488" width="12" height="12" rx="3" fill="var(--purple-light)" stroke="var(--purple)" stroke-width="0.5"/>
+        <text class="ts" x="213" y="499">Semantic (discovered)</text>
+        <rect x="380" y="488" width="12" height="12" rx="3" fill="var(--teal-light)" stroke="var(--teal)" stroke-width="0.5"/>
+        <text class="ts" x="398" y="499">User-created</text>
+      </svg>
+    </div>
+  </div>
+</div>
+
+<!-- ─────────────────── DIAGRAM 5: Concrete Example ─────────────────── -->
+<div class="diagram-section" id="ingestion-example">
+  <div class="diagram-card">
+    <div class="diagram-header">
+      <h2>Concrete example: PDF ingestion</h2>
+      <p>What happens when you upload "Why Functional Programming Matters" by John Hughes. The structural layer (coral) is created by the pipeline. The semantic layer (purple) emerges from NLP extraction. The rhizomatic connection appears when a shared Entity links this paper to a previously ingested React tutorial.</p>
+    </div>
+    <div class="diagram-body">
+      <svg width="100%" viewBox="0 0 680 560" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <marker id="a5" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+            <path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </marker>
+        </defs>
+
+        <g class="node c-coral" onclick="showModal('ex-document')">
+          <rect x="40" y="30" width="350" height="56" rx="8" stroke-width="0.5"/>
+          <text class="th" x="215" y="50" text-anchor="middle" dominant-baseline="central">:Document</text>
+          <text class="ts" x="215" y="68" text-anchor="middle" dominant-baseline="central">Why functional programming matters</text>
+        </g>
+
+        <g class="node c-gray" onclick="showModal('ex-source')">
+          <rect x="430" y="30" width="210" height="56" rx="8" stroke-width="0.5"/>
+          <text class="th" x="535" y="50" text-anchor="middle" dominant-baseline="central">:Source</text>
+          <text class="ts" x="535" y="68" text-anchor="middle" dominant-baseline="central">Academic papers (trust: 0.9)</text>
+        </g>
+
+        <text class="ts" x="410" y="50" text-anchor="middle">FROM</text>
+        <line x1="390" y1="58" x2="428" y2="58" class="arr" marker-end="url(#a5)"/>
+
+        <line x1="120" y1="86" x2="120" y2="120" class="arr" marker-end="url(#a5)"/>
+        <line x1="215" y1="86" x2="215" y2="120" class="arr" marker-end="url(#a5)"/>
+        <line x1="310" y1="86" x2="310" y2="120" class="arr" marker-end="url(#a5)"/>
+
+        <g class="c-coral">
+          <rect x="55" y="120" width="130" height="44" rx="8" stroke-width="0.5"/>
+          <text class="ts" x="120" y="142" text-anchor="middle" dominant-baseline="central">Chunk [0]: Intro</text>
+        </g>
+        <g class="c-coral">
+          <rect x="200" y="120" width="130" height="44" rx="8" stroke-width="0.5"/>
+          <text class="ts" x="265" y="142" text-anchor="middle" dominant-baseline="central">Chunk [1]: HOFs</text>
+        </g>
+        <g class="c-coral">
+          <rect x="345" y="120" width="130" height="44" rx="8" stroke-width="0.5"/>
+          <text class="ts" x="410" y="142" text-anchor="middle" dominant-baseline="central">Chunk [2]: Lazy</text>
+        </g>
+        <g class="c-gray">
+          <rect x="490" y="120" width="40" height="44" rx="8" stroke-width="0.5"/>
+          <text class="ts" x="510" y="142" text-anchor="middle" dominant-baseline="central">...</text>
+        </g>
+
+        <text class="ts" x="560" y="145" text-anchor="start">MENTIONS</text>
+        <line x1="120" y1="164" x2="100" y2="220" stroke="#AFA9EC" stroke-width="0.5" marker-end="url(#a5)"/>
+        <line x1="265" y1="164" x2="100" y2="224" stroke="#AFA9EC" stroke-width="0.5" marker-end="url(#a5)"/>
+        <line x1="265" y1="164" x2="265" y2="220" stroke="#AFA9EC" stroke-width="0.5" marker-end="url(#a5)"/>
+        <line x1="410" y1="164" x2="430" y2="220" stroke="#AFA9EC" stroke-width="0.5" marker-end="url(#a5)"/>
+        <line x1="410" y1="164" x2="265" y2="224" stroke="#AFA9EC" stroke-width="0.5" marker-end="url(#a5)"/>
+
+        <g class="node c-purple" onclick="showModal('ex-entity-mod')">
+          <rect x="40" y="220" width="120" height="44" rx="8" stroke-width="0.5"/>
+          <text class="th" x="100" y="242" text-anchor="middle" dominant-baseline="central">Modularity</text>
+        </g>
+        <g class="node c-purple" onclick="showModal('ex-entity-hof')">
+          <rect x="200" y="220" width="130" height="44" rx="8" stroke-width="0.5"/>
+          <text class="th" x="265" y="242" text-anchor="middle" dominant-baseline="central">Higher-order fns</text>
+        </g>
+        <g class="node c-purple" onclick="showModal('ex-entity-lazy')">
+          <rect x="370" y="220" width="130" height="44" rx="8" stroke-width="0.5"/>
+          <text class="th" x="435" y="242" text-anchor="middle" dominant-baseline="central">Lazy evaluation</text>
+        </g>
+        <g class="node c-purple">
+          <rect x="540" y="220" width="100" height="44" rx="8" stroke-width="0.5"/>
+          <text class="th" x="590" y="242" text-anchor="middle" dominant-baseline="central">Haskell</text>
+        </g>
+
+        <line x1="160" y1="242" x2="198" y2="242" stroke="#7F77DD" stroke-width="1.5" marker-end="url(#a5)"/>
+        <line x1="330" y1="242" x2="368" y2="242" stroke="#7F77DD" stroke-width="1.5" marker-end="url(#a5)"/>
+        <text class="ts" x="340" y="295" text-anchor="middle">RELATED_TO (co-occurrence)</text>
+
+        <rect x="40" y="330" width="600" height="200" rx="12" fill="none" stroke="var(--color-text-tertiary)" stroke-width="0.5" stroke-dasharray="5 4"/>
+        <text class="th" x="60" y="354" text-anchor="start">The rhizomatic moment</text>
+        <text class="ts" x="60" y="374" text-anchor="start">Previously ingested: a React hooks tutorial</text>
+
+        <g class="c-purple">
+          <rect x="60" y="400" width="130" height="44" rx="8" stroke-width="0.5"/>
+          <text class="th" x="125" y="422" text-anchor="middle" dominant-baseline="central">Higher-order fns</text>
+        </g>
+        <g class="c-coral">
+          <rect x="250" y="400" width="160" height="44" rx="8" stroke-width="0.5"/>
+          <text class="ts" x="330" y="422" text-anchor="middle" dominant-baseline="central">Chunk from React doc</text>
+        </g>
+        <g class="c-purple">
+          <rect x="470" y="400" width="140" height="44" rx="8" stroke-width="0.5"/>
+          <text class="th" x="540" y="422" text-anchor="middle" dominant-baseline="central">React hooks</text>
+        </g>
+
+        <line x1="190" y1="422" x2="248" y2="422" stroke="#AFA9EC" stroke-width="0.5" marker-end="url(#a5)"/>
+        <line x1="410" y1="422" x2="468" y2="422" stroke="#AFA9EC" stroke-width="0.5" marker-end="url(#a5)"/>
+
+        <text class="ts" x="340" y="478" text-anchor="middle">Same Entity bridges a 1989 FP paper and a 2024 React tutorial.</text>
+        <text class="ts" x="340" y="498" text-anchor="middle">The connection you didn't know to search for.</text>
+      </svg>
+    </div>
+  </div>
+</div>
+
+<!-- ─────────────────── MODAL ─────────────────── -->
+<div class="modal-overlay" id="modal-overlay" onclick="if(event.target===this)closeModal()">
+  <div class="modal">
+    <div class="modal-head">
+      <h3 id="modal-title"></h3>
+      <button class="modal-close" onclick="closeModal()">&times;</button>
+    </div>
+    <div class="modal-body" id="modal-body"></div>
+  </div>
+</div>
+
+<script>
+const modalData = {
+  // ── System Architecture: Ingestion ──
+  documents: {
+    title: 'Document processor',
+    tag: 'ts-tag', tagLabel: 'TypeScript adapter',
+    body: `<p>Handles <strong>PDF and Word documents</strong>. Each format gets its own adapter function that outputs a common <code>ExtractedContent</code> type.</p>
+    <p>PDFs are processed with a text extraction library first. If the text layer is empty (scanned document), the content is routed to the OCR service instead.</p>
+    <p>Word documents (.docx) are unzipped and the XML is parsed to extract text, tables, and metadata while preserving structural hierarchy (headings, sections).</p>
+    <p><strong>Key principle:</strong> Each adapter is a pure function — <code>pdf → ExtractedContent</code>. No side effects, no shared state.</p>`
+  },
+  tables: {
+    title: 'Table / CSV ingestion',
+    tag: 'ts-tag', tagLabel: 'TypeScript adapter',
+    body: `<p>Handles <strong>spreadsheets (.xlsx, .csv, .tsv)</strong>. Detects headers, infers column types, and extracts both the raw data and structural metadata (sheet names, formulas, named ranges).</p>
+    <p>Tables are a rich source of entities and relationships — a column of company names becomes a set of entity nodes, and co-occurrence in a row becomes a relationship.</p>
+    <p>Outputs the same <code>ExtractedContent</code> shape, with an additional <code>tabularData</code> field for structured row/column access.</p>`
+  },
+  web: {
+    title: 'Web / URL ingestion',
+    tag: 'ts-tag', tagLabel: 'TypeScript adapter',
+    body: `<p>Fetches and extracts content from <strong>web pages</strong>. Uses libraries like <code>trafilatura</code> (Python) or <code>readability</code> (JS) to strip navigation, ads, and boilerplate — extracting just the article content.</p>
+    <p>Preserves metadata: publication date, author, source domain, Open Graph tags. This metadata becomes properties on the document node in the graph.</p>
+    <p>Can also handle <strong>sitemaps and RSS feeds</strong> for bulk ingestion of a website or blog.</p>`
+  },
+  images: {
+    title: 'Image / OCR ingestion',
+    tag: 'py-tag', tagLabel: 'Python service',
+    body: `<p>Handles <strong>images containing text</strong> — screenshots, photos of whiteboards, scanned pages. Routes to the Python OCR service which uses <code>pytesseract</code> for text extraction.</p>
+    <p>Preprocessing (deskewing, contrast adjustment, binarization) happens before OCR to improve accuracy.</p>
+    <p>For images without text (diagrams, photos), metadata extraction captures dimensions, EXIF data, and eventually a description via a vision model (Phase 2).</p>`
+  },
+
+  // ── System Architecture: Processing ──
+  chunking: {
+    title: 'Chunking / NLP pipeline',
+    tag: 'py-tag', tagLabel: 'Python service',
+    body: `<p>Splits long documents into <strong>semantically coherent chunks</strong> — not arbitrary character splits, but breaks at paragraph or section boundaries that preserve meaning.</p>
+    <p>Uses <code>spaCy</code> for sentence segmentation and a sliding-window approach with overlap to ensure context isn't lost at chunk boundaries.</p>
+    <p>Each chunk retains a reference to its source document and position, so you can always trace back to the original.</p>
+    <p><strong>Why chunk?</strong> Knowledge graphs work best with focused pieces of information. A 50-page PDF as a single node is useless; 200 focused chunks with extracted entities are powerful.</p>`
+  },
+  entities: {
+    title: 'Entity and relationship extraction',
+    tag: 'py-tag', tagLabel: 'Python service',
+    body: `<p>The core of knowledge graph construction. Identifies <strong>named entities</strong> (people, organizations, technologies, concepts) and <strong>relationships</strong> between them.</p>
+    <p>Uses <code>spaCy</code> NER as a baseline, potentially augmented by an LLM for higher-quality extraction in Phase 2.</p>
+    <p>Outputs a list of <code>(entity, relationship, entity)</code> triples that become nodes and edges in Neo4j. For example: <code>(TypeScript, USED_FOR, API development)</code>.</p>
+    <p><strong>Entity resolution:</strong> "TypeScript", "TS", and "typescript" should all resolve to the same node. This deduplication step is critical for graph quality.</p>`
+  },
+  metadata: {
+    title: 'Metadata tagging',
+    tag: 'py-tag', tagLabel: 'Python service',
+    body: `<p>Classifies content by <strong>topic, domain, date, source quality, and content type</strong>. This metadata becomes properties on nodes and enables faceted search in Elasticsearch.</p>
+    <p>Topic classification can start rule-based (keyword matching) and evolve to ML-based (text classification models) as the corpus grows.</p>
+    <p>Also extracts structural metadata: headings hierarchy, document type (tutorial vs. reference vs. opinion), reading level.</p>`
+  },
+  embeddings: {
+    title: 'Embedding generation',
+    tag: 'py-tag', tagLabel: 'Python service',
+    body: `<p>Generates <strong>dense vector representations</strong> of each chunk using <code>sentence-transformers</code>. These vectors capture semantic meaning — similar concepts cluster nearby in vector space.</p>
+    <p>Stored in Elasticsearch's dense_vector field for <strong>semantic search</strong>: "find content similar to this query" even when the exact words don't match.</p>
+    <p>Model choice matters here. Starting with <code>all-MiniLM-L6-v2</code> (fast, good quality) and can upgrade to larger models as needed.</p>
+    <p><strong>This is the bridge to Phase 2:</strong> GraphRAG uses embeddings to find relevant subgraphs for LLM context.</p>`
+  },
+
+  // ── System Architecture: Storage ──
+  neo4j: {
+    title: 'Neo4j — Knowledge graph',
+    tag: 'infra-tag', tagLabel: 'Infrastructure',
+    body: `<p>The <strong>heart of the system</strong>. Stores entities as nodes and relationships as edges, forming a navigable knowledge graph.</p>
+    <p>Queried via <strong>Cypher</strong>, a declarative graph query language. Example: <code>MATCH (d:Document)-[:MENTIONS]->(e:Entity {name: "GraphRAG"}) RETURN d</code></p>
+    <p>Community Edition is free and supports all needed features. Runs in Docker with persistent volume mounts.</p>
+    <p>The <code>@rhizomatic/graph</code> package wraps the Neo4j driver in functional query builders — composable functions instead of raw Cypher strings scattered through the codebase.</p>`
+  },
+  elasticsearch: {
+    title: 'Elasticsearch — Search index',
+    tag: 'infra-tag', tagLabel: 'Infrastructure',
+    body: `<p>Provides <strong>full-text search, fuzzy matching, and faceted filtering</strong> — capabilities the graph alone doesn't do well.</p>
+    <p>Treated as a <strong>read-optimized projection</strong> of the graph. When a node is created or updated in Neo4j, an event triggers an index update in ES. The graph is the source of truth; ES is the search lens.</p>
+    <p>Supports <strong>three search modes</strong>: keyword (exact match), full-text (analyzed, ranked), and vector (semantic similarity via dense_vector fields).</p>
+    <p>The search interface combines results from all three modes, weighted by relevance.</p>`
+  },
+  filestore: {
+    title: 'File store — Original documents',
+    tag: 'ts-tag', tagLabel: 'TypeScript package',
+    body: `<p>Preserves the <strong>original uploaded files</strong> so you can always get back to the source. The graph and search index contain extracted knowledge; the file store has the raw truth.</p>
+    <p>The <code>@rhizomatic/storage</code> package abstracts the storage backend behind a functional interface. Initially <strong>local filesystem</strong> (a directory on disk); later swappable to S3-compatible storage without changing any code above it.</p>
+    <p>Files are stored with content-addressable hashes to avoid duplicates and enable integrity checks.</p>`
+  },
+
+  // ── System Architecture: API & Interface ──
+  api: {
+    title: 'API layer',
+    tag: 'ts-tag', tagLabel: 'TypeScript package',
+    body: `<p>The <strong>single gateway</strong> between data and interfaces. All reads and writes go through this layer — the frontend never talks to Neo4j or ES directly.</p>
+    <p><strong>GraphQL</strong> is a natural fit because the data is inherently graph-shaped. A single query can fetch a document, its entities, their relationships, and related documents — exactly what the frontend needs, no over-fetching.</p>
+    <p>REST endpoints are available for simple operations (file upload, health checks) where GraphQL adds unnecessary complexity.</p>
+    <p>Built with a framework like <code>Fastify</code> + <code>Mercurius</code> (GraphQL) or <code>Pothos</code> for type-safe schema building.</p>`
+  },
+  wiki: {
+    title: 'Wiki browser',
+    tag: 'ts-tag', tagLabel: 'Next.js frontend',
+    body: `<p>The primary <strong>reading and curating</strong> interface. Each wiki page corresponds to an entity or topic node in the graph.</p>
+    <p>Pages show: a summary, linked entities, source documents that mention this topic, and a graph neighborhood visualization.</p>
+    <p>Users can <strong>edit content, add notes, merge entities, and curate relationships</strong> — the wiki layer is where human judgment improves the graph.</p>
+    <p>Server-side rendered via Next.js for fast initial loads and good SEO if the knowledge base is ever made public.</p>`
+  },
+  'search-ui': {
+    title: 'Search interface',
+    tag: 'ts-tag', tagLabel: 'Next.js frontend',
+    body: `<p>Combines <strong>full-text, graph, and semantic search</strong> in a unified interface.</p>
+    <p>Type a query → see results ranked by relevance, with facets for filtering by topic, date, source type, and entity connections.</p>
+    <p>Results show not just matching documents but the <strong>graph context</strong> around them — related entities, connected topics, similar documents.</p>
+    <p>Powered by Elasticsearch on the backend, with graph enrichment from Neo4j.</p>`
+  },
+  'graph-explorer': {
+    title: 'Graph explorer',
+    tag: 'ts-tag', tagLabel: 'Next.js frontend',
+    body: `<p>An interactive <strong>force-directed graph visualization</strong> for discovering unexpected connections. Built with a library like <code>d3-force</code> or <code>vis-network</code>.</p>
+    <p>Start from any entity node and explore outward — click to expand connections, filter by relationship type, zoom into clusters.</p>
+    <p>This is where the knowledge graph shines over flat search: you can <strong>see</strong> how topics connect, discover paths between seemingly unrelated concepts.</p>
+    <p>Performance consideration: large graphs need server-side filtering. The API sends only the local neighborhood, not the entire graph.</p>`
+  },
+
+  // ── Project Structure: Packages ──
+  'pkg-common': {
+    title: '@rhizomatic/common',
+    tag: 'ts-tag', tagLabel: 'TypeScript',
+    body: `<p>The <strong>foundation package</strong> that every other package depends on. Contains:</p>
+    <p><strong>Type definitions:</strong> <code>ExtractedContent</code>, <code>GraphNode</code>, <code>GraphEdge</code>, <code>SearchResult</code>, <code>JobPayload</code> — the shared vocabulary of the system.</p>
+    <p><strong>Utility functions:</strong> Result type helpers, validation functions, ID generators, date formatters.</p>
+    <p><strong>Configuration:</strong> Typed config schemas loaded from environment variables, with validation at startup.</p>
+    <p><strong>Key rule:</strong> This package has zero external dependencies beyond the FP library. It's pure types and functions.</p>`
+  },
+  'pkg-graph': {
+    title: '@rhizomatic/graph',
+    tag: 'ts-tag', tagLabel: 'TypeScript',
+    body: `<p>Wraps the <strong>Neo4j JavaScript driver</strong> in a functional, composable API. Instead of scattering raw Cypher strings, you build queries with typed functions.</p>
+    <p>Manages the <strong>ontology</strong> — the schema of node types (Document, Entity, Topic, Source) and relationship types (MENTIONS, RELATED_TO, DERIVED_FROM).</p>
+    <p>Provides transaction management, connection pooling, and query result mapping to typed objects.</p>`
+  },
+  'pkg-search': {
+    title: '@rhizomatic/search',
+    tag: 'ts-tag', tagLabel: 'TypeScript',
+    body: `<p>Wraps the <strong>Elasticsearch client</strong> with typed index schemas and query builders.</p>
+    <p>Handles <strong>index synchronization</strong> with Neo4j — when graph data changes, this package updates the corresponding search documents.</p>
+    <p>Provides composable search functions: <code>fullText</code>, <code>fuzzy</code>, <code>semantic</code>, <code>faceted</code> — that can be combined in a single query.</p>`
+  },
+  'pkg-ingestion': {
+    title: '@rhizomatic/ingestion',
+    tag: 'ts-tag', tagLabel: 'TypeScript',
+    body: `<p>The <strong>orchestrator</strong>. Accepts uploaded content, determines its type, and routes it through the processing pipeline.</p>
+    <p>Uses <strong>BullMQ</strong> to enqueue jobs for the Python services. Tracks job status, handles retries, and collects results.</p>
+    <p>The pipeline is defined as a composable chain: <code>validate → detectType → enqueue → awaitResult → storeGraph → indexSearch</code>.</p>`
+  },
+  'pkg-api': {
+    title: '@rhizomatic/api',
+    tag: 'ts-tag', tagLabel: 'TypeScript',
+    body: `<p>The <strong>GraphQL and REST server</strong>. Composes <code>@rhizomatic/graph</code> and <code>@rhizomatic/search</code> into a unified API.</p>
+    <p>GraphQL schema maps naturally to the knowledge graph structure. Resolvers call into the graph and search packages.</p>
+    <p>REST endpoints handle file uploads, health checks, and simple CRUD where GraphQL is overkill.</p>`
+  },
+  'pkg-web': {
+    title: '@rhizomatic/web',
+    tag: 'ts-tag', tagLabel: 'TypeScript',
+    body: `<p>The <strong>Next.js frontend</strong> application. Three primary views: wiki browser, search interface, and graph explorer.</p>
+    <p>Uses server-side rendering for wiki pages and client-side React for interactive components.</p>
+    <p>Consumes the GraphQL API via a typed client (e.g., <code>urql</code> or <code>graphql-request</code> with codegen).</p>`
+  },
+  'pkg-storage': {
+    title: '@rhizomatic/storage',
+    tag: 'ts-tag', tagLabel: 'TypeScript',
+    body: `<p>An <strong>abstraction over file storage</strong>. Defines a simple interface: <code>store</code>, <code>retrieve</code>, <code>delete</code>, <code>exists</code>.</p>
+    <p>Initial implementation: local filesystem (a directory on disk). Future: S3-compatible storage (MinIO for self-hosted, AWS S3 for cloud).</p>
+    <p>Files are stored with <strong>content-addressable hashes</strong> — the filename is a hash of the content, avoiding duplicates automatically.</p>`
+  },
+  'pkg-cli': {
+    title: '@rhizomatic/cli',
+    tag: 'ts-tag', tagLabel: 'TypeScript',
+    body: `<p>A <strong>command-line tool</strong> for development and administration. Built with a library like <code>commander</code> or <code>clipanion</code>.</p>
+    <p>Commands include: ingest a file manually, inspect graph nodes, run search queries, export/import data, reset databases, run health checks.</p>
+    <p>Essential for development — lets you test pipeline stages individually without going through the web UI.</p>`
+  },
+
+  // ── Project Structure: Services ──
+  'svc-processor': {
+    title: 'Processor service',
+    tag: 'py-tag', tagLabel: 'Python',
+    body: `<p>The main <strong>NLP processing worker</strong>. Listens on the Redis queue for processing jobs.</p>
+    <p>Pipeline: receive content → chunk text → run spaCy NER → extract relationships → resolve entities → return structured results.</p>
+    <p>Each stage is a pure function. The service is a thin wrapper that connects the queue to the pipeline.</p>`
+  },
+  'svc-embedder': {
+    title: 'Embedder service',
+    tag: 'py-tag', tagLabel: 'Python',
+    body: `<p>Generates <strong>vector embeddings</strong> using <code>sentence-transformers</code>. A separate service because embedding models are memory-intensive and benefit from GPU acceleration.</p>
+    <p>Accepts text chunks, returns dense vectors. Batches requests for efficiency.</p>
+    <p>Model is configurable — start with <code>all-MiniLM-L6-v2</code> (fast, 384 dimensions), upgrade later as needed.</p>`
+  },
+  'svc-ocr': {
+    title: 'OCR service',
+    tag: 'py-tag', tagLabel: 'Python',
+    body: `<p>Extracts text from <strong>images</strong> using <code>pytesseract</code>.</p>
+    <p>Includes preprocessing: deskewing, contrast adjustment, binarization to improve OCR accuracy.</p>
+    <p>Returns extracted text plus bounding box information (where on the page was each word found).</p>`
+  },
+
+  // ── Project Structure: Infra ──
+  'infra-docker': {
+    title: 'Docker Compose infrastructure',
+    tag: 'infra-tag', tagLabel: 'Infrastructure',
+    body: `<p>A single <code>docker compose up</code> spins up the entire infrastructure stack:</p>
+    <p><strong>Neo4j</strong> — graph database on port 7474 (browser) and 7687 (Bolt protocol).</p>
+    <p><strong>Elasticsearch</strong> — search engine on port 9200.</p>
+    <p><strong>Redis</strong> — message queue and cache on port 6379.</p>
+    <p>Each service has persistent volume mounts so data survives container restarts. Health checks ensure services are ready before the application starts.</p>
+    <p>Designed so each Compose service maps cleanly to a Kubernetes deployment when you're ready to migrate.</p>`
+  },
+
+  // ── Docker Infrastructure Diagram ──
+  'dc-neo4j': {
+    title: 'Neo4j container configuration',
+    tag: 'infra-tag', tagLabel: 'Docker',
+    body: `<p>Runs <strong>Neo4j 5.x Community Edition</strong> with the APOC plugin pre-installed.</p>
+    <p><strong>Ports:</strong> 7474 exposes the browser UI for running Cypher queries visually. 7687 is the Bolt protocol that your application connects to.</p>
+    <p><strong>Memory:</strong> 512MB JVM heap + 512MB page cache. The page cache holds graph data in memory for fast reads — increase if you notice slow traversal queries on large datasets.</p>
+    <p><strong>APOC plugin:</strong> "Awesome Procedures on Cypher" — adds hundreds of utility functions for batch operations, data import/export, path algorithms, and text processing. Installed automatically via <code>NEO4J_PLUGINS</code> environment variable.</p>
+    <p><strong>Credentials:</strong> <code>neo4j/rhizomatic-dev</code> — change before any non-local deployment.</p>
+    <p><strong>Health check:</strong> Polls the HTTP endpoint every 10s, with a 30s startup grace period for JVM warmup.</p>`
+  },
+  'dc-elasticsearch': {
+    title: 'Elasticsearch container configuration',
+    tag: 'infra-tag', tagLabel: 'Docker',
+    body: `<p>Runs <strong>Elasticsearch 8.15.0</strong> in single-node discovery mode.</p>
+    <p><strong>Single-node mode:</strong> Disables the bootstrap check that normally requires a multi-node cluster. Fine for development and personal use — in production you'd run 3+ nodes for resilience.</p>
+    <p><strong>Security disabled:</strong> <code>xpack.security.enabled=false</code> skips TLS and authentication for local development. Enable in production.</p>
+    <p><strong>Memory:</strong> 512MB JVM heap. ES also uses off-heap memory for Lucene segments, so actual usage is roughly 2x heap. The <code>memlock</code> ulimit prevents the OS from swapping ES memory to disk.</p>
+    <p><strong>Vector search:</strong> ES 8.x supports <code>dense_vector</code> fields natively — when we add embeddings, kNN search works without additional plugins.</p>
+    <p><strong>Health check:</strong> Waits for "yellow" cluster status (all primary shards allocated). Uses a longer interval (15s) because ES is the slowest service to start.</p>`
+  },
+  'dc-redis': {
+    title: 'Redis container configuration',
+    tag: 'infra-tag', tagLabel: 'Docker',
+    body: `<p>Runs <strong>Redis 7.x Alpine</strong> (minimal image, ~30MB).</p>
+    <p><strong>Two roles:</strong> (1) Message queue via BullMQ — TypeScript enqueues processing jobs, Python workers consume them. (2) Cache for frequently accessed graph query results.</p>
+    <p><strong>Persistence:</strong> <code>appendonly yes</code> enables the Append Only File. Every write operation is logged to disk, so queued jobs survive a Redis restart. This prevents losing uploaded documents mid-processing.</p>
+    <p><strong>Memory policy:</strong> <code>allkeys-lru</code> evicts least-recently-used keys when the 256MB limit is reached. Safe because cache data can always be regenerated from Neo4j, and BullMQ job data is transient.</p>
+    <p><strong>Health check:</strong> Simple <code>redis-cli ping</code> — Redis starts fast (5s grace period).</p>`
+  },
+
+  // ── Graph Ontology Diagram ──
+  'ont-document': {
+    title: ':Document node',
+    tag: 'infra-tag', tagLabel: 'Structural',
+    body: `<p>Created automatically when content is ingested. The source-of-truth reference for extracted knowledge.</p>
+    <p><strong>Key properties:</strong> <code>id</code> (uuid), <code>title</code>, <code>contentType</code> (pdf, docx, csv, html, image), <code>fileHash</code> (SHA-256 for deduplication), <code>ingestedAt</code>, <code>summary</code>, <code>metadata</code> (json).</p>
+    <p><strong>Relationships:</strong> <code>HAS_CHUNK</code> to Chunks (ordered by position), <code>FROM_SOURCE</code> to a Source, <code>REFERENCES</code> to other Documents, <code>TAGGED</code> to Tags.</p>`
+  },
+  'ont-chunk': {
+    title: ':Chunk node',
+    tag: 'infra-tag', tagLabel: 'Structural',
+    body: `<p>The atomic unit of knowledge. Semantically coherent pieces broken at paragraph or section boundaries, not arbitrary character splits.</p>
+    <p><strong>Key properties:</strong> <code>id</code>, <code>content</code> (the text), <code>position</code> (order in document), <code>heading</code> (section heading), <code>embedding</code> (vector reference), <code>charCount</code>.</p>
+    <p><strong>Relationships:</strong> <code>MENTIONS</code> Entities (with confidence), <code>ABOUT</code> Topics, <code>NEXT_CHUNK</code> for reading order, <code>SIMILAR_TO</code> other Chunks by embedding distance.</p>`
+  },
+  'ont-source': {
+    title: ':Source node',
+    tag: 'infra-tag', tagLabel: 'Structural',
+    body: `<p>Tracks provenance — where documents came from. Multiple documents can share a source.</p>
+    <p><strong>Key properties:</strong> <code>id</code>, <code>name</code> ("Hacker News", "Research folder"), <code>kind</code> (web, file, upload, api), <code>uri</code>, <code>trustLevel</code> (0.0-1.0).</p>
+    <p><strong>Trust level</strong> lets you weight search results: a peer-reviewed paper source vs. a random blog post.</p>`
+  },
+  'ont-entity': {
+    title: ':Entity node',
+    tag: 'ts-tag', tagLabel: 'Semantic',
+    body: `<p>The <strong>heart of the rhizome</strong>. Any named thing: person, organization, technology, concept, place. Discovered by NLP and refined by you.</p>
+    <p><strong>Key properties:</strong> <code>id</code>, <code>name</code> (canonical), <code>aliases</code> (["TS", "typescript"]), <code>kind</code> (open string, not enum), <code>description</code>, <code>mentionCount</code>.</p>
+    <p><strong>Critical relationship:</strong> <code>RELATED_TO</code> other Entities carries weight (0-1), kind (co-occurrence, causal, hierarchical, analogical, user-defined), and source (auto, manual). This is how unexpected connections surface.</p>
+    <p>Also: <code>INSTANCE_OF</code> ("TypeScript" → "Programming language"), <code>PART_OF</code> ("React" → "JS ecosystem").</p>`
+  },
+  'ont-topic': {
+    title: ':Topic node',
+    tag: 'ts-tag', tagLabel: 'Semantic',
+    body: `<p>An emergent cluster of related entities and chunks. The closest thing to a "wiki page" — the natural unit of browsing.</p>
+    <p><strong>Key properties:</strong> <code>id</code>, <code>name</code>, <code>summary</code>, <code>origin</code> (auto from clustering, or manual).</p>
+    <p><strong>Key relationship:</strong> <code>OVERLAPS</code> with other Topics when they share entities. This is where cross-domain connections surface — a "Distributed systems" topic overlapping with a "Philosophy of networks" topic reveals conceptual bridges.</p>`
+  },
+  'ont-note': {
+    title: ':Note node',
+    tag: 'py-tag', tagLabel: 'User-created',
+    body: `<p>Your voice in the graph. Freeform markdown text attached to any node — your interpretation, a question, a connection you noticed.</p>
+    <p><strong>Key properties:</strong> <code>id</code>, <code>content</code> (markdown), <code>createdAt</code>, <code>updatedAt</code>.</p>
+    <p><strong>Relationship:</strong> <code>ANNOTATES</code> can target any node type — Document, Entity, Topic, Chunk, even another Note. Notes are indexed in Elasticsearch and participate in the graph like system-generated content.</p>`
+  },
+  'ont-tag': {
+    title: ':Tag node',
+    tag: 'py-tag', tagLabel: 'User-created',
+    body: `<p>Lightweight flat labels for personal organization. Unlike Topics (which have structure), Tags are just strings applied freely: "to-read", "important", "project-alpha".</p>
+    <p><strong>Key properties:</strong> <code>id</code>, <code>name</code> (unique, lowercase), <code>color</code> (optional display color).</p>
+    <p>Any node can have any number of tags via the <code>TAGGED</code> relationship.</p>`
+  },
+
+  // ── Concrete Example Diagram ──
+  'ex-document': {
+    title: 'Example: Document node',
+    tag: 'infra-tag', tagLabel: 'Structural',
+    body: `<p>Created when the PDF is uploaded. Properties populated from the file itself and PDF metadata extraction.</p>
+    <p><code>title</code>: "Why functional programming matters" (from PDF metadata or first heading).</p>
+    <p><code>contentType</code>: "pdf". <code>fileHash</code>: SHA-256 of the original file for deduplication. <code>metadata</code>: { author: "John Hughes", year: 1989, pages: 23 }.</p>
+    <p>The original PDF is stored in blob storage, referenced by the hash. If someone uploads the same file again, the hash matches and no duplicate is created.</p>`
+  },
+  'ex-source': {
+    title: 'Example: Source node',
+    tag: 'infra-tag', tagLabel: 'Structural',
+    body: `<p>Represents provenance. This could be an existing Source node ("Academic papers") or a new one created for this upload session.</p>
+    <p><code>trustLevel: 0.9</code> — a peer-reviewed academic paper gets high trust. A random blog post might get 0.4. Trust levels let you weight search results: authoritative sources rank higher.</p>
+    <p>Multiple documents share the same Source when they come from the same origin. All papers from arXiv might share one Source node.</p>`
+  },
+  'ex-entity-mod': {
+    title: 'Example: "Modularity" entity',
+    tag: 'ts-tag', tagLabel: 'Discovered',
+    body: `<p>NLP identifies "modularity" as a recurring concept in the paper's introduction and conclusion.</p>
+    <p><code>kind: "concept"</code> — freeform string, not a rigid enum. The system suggests "concept" based on NER classification; you can refine it later.</p>
+    <p>This entity is connected via <code>RELATED_TO</code> to "Higher-order functions" because they co-occur in multiple chunks. The relationship carries <code>weight: 0.7</code> and <code>kind: "co-occurrence"</code>.</p>`
+  },
+  'ex-entity-hof': {
+    title: 'Example: "Higher-order functions" entity',
+    tag: 'ts-tag', tagLabel: 'The rhizomatic bridge',
+    body: `<p>This is the <strong>key node</strong> in this example. It already existed in the graph from a previously ingested React hooks tutorial.</p>
+    <p><strong>Entity resolution:</strong> When NLP extracts "higher-order functions" from the FP paper, the system checks for existing entities with matching names or aliases. It finds the existing node and links to it instead of creating a duplicate.</p>
+    <p><code>aliases: ["HOFs", "higher order functions", "higher-order function"]</code></p>
+    <p>Now this single node connects two completely unrelated documents from different decades. Browsing its wiki page shows both sources, and the graph reveals that Haskell and React hooks are two hops apart.</p>`
+  },
+  'ex-entity-lazy': {
+    title: 'Example: "Lazy evaluation" entity',
+    tag: 'ts-tag', tagLabel: 'Discovered',
+    body: `<p>Extracted from Chunk [2] and several other chunks where the paper discusses evaluation strategies.</p>
+    <p><code>RELATED_TO</code> "Higher-order functions" with <code>weight: 0.85</code> — they co-occur heavily in the paper, and the paper argues they're complementary techniques for modularity.</p>
+    <p>If you later ingest content about Haskell's runtime, "lazy evaluation" becomes another bridge entity — connecting the theoretical paper to practical implementation details.</p>`
+  }
+};
+
+function showModal(key) {
+  const data = modalData[key];
+  if (!data) return;
+  const tag = data.tag ? `<span class="modal-tag ${data.tag}">${data.tagLabel}</span>` : '';
+  document.getElementById('modal-title').textContent = data.title;
+  document.getElementById('modal-body').innerHTML = tag + data.body;
+  document.getElementById('modal-overlay').classList.add('active');
+  document.addEventListener('keydown', escHandler);
+}
+
+function closeModal() {
+  document.getElementById('modal-overlay').classList.remove('active');
+  document.removeEventListener('keydown', escHandler);
+}
+
+function escHandler(e) { if (e.key === 'Escape') closeModal(); }
+</script>
+</body>
+</html>

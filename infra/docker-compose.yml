@@ -1,0 +1,221 @@
+# ============================================================================
+# Rhizomatic — Docker Compose for Local Development
+# ============================================================================
+#
+# Usage:
+#   docker compose up -d          Start all services in background
+#   docker compose down            Stop all services (data preserved in volumes)
+#   docker compose down -v         Stop and DELETE all data (fresh start)
+#   docker compose logs -f neo4j   Follow logs for a specific service
+#   docker compose ps              Check service status
+#
+# Architecture:
+#   Infrastructure (Neo4j, Elasticsearch, Redis) runs in containers.
+#   Application code (TypeScript, Python) runs on your host machine.
+#   This gives you fast hot-reload while keeping databases isolated.
+#
+# Ports exposed to host:
+#   7474  — Neo4j Browser (web UI for running Cypher queries)
+#   7687  — Neo4j Bolt protocol (what your app connects to)
+#   9200  — Elasticsearch REST API
+#   6379  — Redis
+#
+# Volumes:
+#   Named volumes persist data across container restarts.
+#   Use `docker compose down -v` to wipe everything for a fresh start.
+#
+# ============================================================================
+
+name: rhizomatic
+
+services:
+  # --------------------------------------------------------------------------
+  # Neo4j — Graph Database
+  # --------------------------------------------------------------------------
+  # Stores the knowledge graph: entities, relationships, and the ontology.
+  # Community Edition is free and supports everything we need.
+  #
+  # Web UI: http://localhost:7474
+  #   Default credentials: neo4j / rhizomatic-dev
+  #   The browser lets you run Cypher queries and visualize graph data.
+  #
+  # Your app connects via Bolt protocol on port 7687.
+  # Connection string: bolt://localhost:7687
+  #
+  # Plugins:
+  #   APOC (Awesome Procedures on Cypher) — utility functions for graph
+  #   operations: batch processing, data import/export, path finding, etc.
+  #   Installed automatically via NEO4J_PLUGINS environment variable.
+  #
+  # Memory settings:
+  #   heap.initial_size / heap.max_size: JVM heap for query processing.
+  #   pagecache.size: Memory for caching graph data from disk.
+  #   At personal scale, 512m heap + 512m pagecache is generous.
+  #   Increase if you notice slow queries on large datasets.
+  # --------------------------------------------------------------------------
+  neo4j:
+    image: neo4j:5-community
+    container_name: rhizomatic-neo4j
+    restart: unless-stopped
+    ports:
+      - "7474:7474"   # Browser UI
+      - "7687:7687"   # Bolt protocol
+    environment:
+      # Authentication — change in production!
+      NEO4J_AUTH: neo4j/rhizomatic-dev
+
+      # Install APOC plugin automatically on first start
+      NEO4J_PLUGINS: '["apoc"]'
+
+      # Memory tuning for personal/dev use
+      NEO4J_server_memory_heap_initial__size: 512m
+      NEO4J_server_memory_heap_max__size: 512m
+      NEO4J_server_memory_pagecache_size: 512m
+
+      # Allow APOC to read/write files (needed for data import)
+      NEO4J_dbms_security_procedures_unrestricted: apoc.*
+      NEO4J_dbms_security_procedures_allowlist: apoc.*
+    volumes:
+      # Persist graph data across container restarts
+      - neo4j-data:/data
+      # Persist logs for debugging
+      - neo4j-logs:/logs
+    healthcheck:
+      # Verify Neo4j is ready to accept connections
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:7474 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - rhizomatic-net
+
+  # --------------------------------------------------------------------------
+  # Elasticsearch — Search Engine
+  # --------------------------------------------------------------------------
+  # Provides full-text search, fuzzy matching, and vector search.
+  # Treated as a read-optimized projection of the Neo4j graph.
+  #
+  # REST API: http://localhost:9200
+  #   Test it: curl http://localhost:9200/_cluster/health
+  #
+  # Single-node mode:
+  #   We disable the bootstrap check that normally requires a multi-node
+  #   cluster. Fine for development and personal use. For production,
+  #   you'd run a 3-node cluster for resilience.
+  #
+  # Security:
+  #   Disabled for local dev (xpack.security.enabled=false).
+  #   In production, enable TLS and authentication.
+  #
+  # Memory:
+  #   ES_JAVA_OPTS controls the JVM heap. 512m is comfortable for dev.
+  #   Elasticsearch also uses off-heap memory for Lucene — total memory
+  #   usage will be roughly 2x the heap setting.
+  #
+  # Vector search preparation:
+  #   ES 8.x supports dense_vector fields natively. When we add embeddings,
+  #   we can use kNN search without any additional plugins.
+  # --------------------------------------------------------------------------
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.15.0
+    container_name: rhizomatic-elasticsearch
+    restart: unless-stopped
+    ports:
+      - "9200:9200"
+    environment:
+      # Single-node discovery (no cluster coordination needed)
+      discovery.type: single-node
+
+      # Disable security for local development
+      xpack.security.enabled: "false"
+
+      # JVM heap size — 512m is comfortable for dev workloads
+      ES_JAVA_OPTS: "-Xms512m -Xmx512m"
+
+      # Cluster name for identification
+      cluster.name: rhizomatic-search
+    volumes:
+      - es-data:/usr/share/elasticsearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9200/_cluster/health?wait_for_status=yellow&timeout=5s || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
+    networks:
+      - rhizomatic-net
+    # Elasticsearch needs this for memory-mapped files on Linux
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+
+  # --------------------------------------------------------------------------
+  # Redis — Message Queue & Cache
+  # --------------------------------------------------------------------------
+  # Two roles:
+  #   1. Message queue (via BullMQ) — TypeScript enqueues processing jobs,
+  #      Python workers consume them.
+  #   2. Cache — frequently accessed graph query results.
+  #
+  # Persistence:
+  #   appendonly=yes enables the Append Only File. Redis writes every
+  #   operation to disk, so jobs survive a Redis restart. This is important
+  #   because losing a queue message means losing a user's uploaded document
+  #   mid-processing.
+  #
+  # maxmemory-policy:
+  #   allkeys-lru evicts the least-recently-used keys when memory is full.
+  #   This is safe because our cache data can always be regenerated from
+  #   Neo4j, and BullMQ job data is transient.
+  # --------------------------------------------------------------------------
+  redis:
+    image: redis:7-alpine
+    container_name: rhizomatic-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    command: >
+      redis-server
+      --appendonly yes
+      --maxmemory 256mb
+      --maxmemory-policy allkeys-lru
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+    networks:
+      - rhizomatic-net
+
+# ============================================================================
+# Volumes — persistent storage across container restarts
+# ============================================================================
+# Named volumes are managed by Docker. Data lives in /var/lib/docker/volumes/
+# on your host. Use `docker compose down -v` to delete them for a fresh start.
+# ============================================================================
+volumes:
+  neo4j-data:
+    name: rhizomatic-neo4j-data
+  neo4j-logs:
+    name: rhizomatic-neo4j-logs
+  es-data:
+    name: rhizomatic-es-data
+  redis-data:
+    name: rhizomatic-redis-data
+
+# ============================================================================
+# Network — internal communication between services
+# ============================================================================
+# All services join the same bridge network. They can reach each other by
+# service name (e.g., a container can connect to "neo4j:7687").
+# Your host machine connects via the published ports (localhost:7474, etc.).
+# ============================================================================
+networks:
+  rhizomatic-net:
+    name: rhizomatic-net
+    driver: bridge
