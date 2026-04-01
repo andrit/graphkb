@@ -119,7 +119,17 @@ Each layer is a set of composable, pure functions that take typed input and prod
 - API routes available as a lightweight backend-for-frontend layer.
 - File-based routing maps naturally to wiki page structure.
 
-### 3.7 Deployment: Docker Compose → K3s
+### 3.7 API: GraphQL (Mercurius) + REST
+
+**Decision**: GraphQL via Mercurius (Fastify plugin) as the primary API protocol. REST endpoints for file upload and health checks.
+
+**Rationale**:
+- Data is inherently graph-shaped; queries are inherently variable-depth. GraphQL lets the frontend request exactly the subgraph it needs — no over-fetching, no multiple round trips.
+- Different views need different query shapes: shallow for graph explorer, deep for wiki pages, flat for search. One schema serves all without dedicated endpoints.
+- Cypher queries map naturally to GraphQL resolvers: a `relatedEntities` field becomes a `MATCH (e)-[r:RELATED_TO]-(connected)` query.
+- REST retained for `/health` (simple status) and `/upload` (multipart file streaming) where GraphQL adds unnecessary complexity.
+
+### 3.8 Deployment: Docker Compose → K3s
 
 **Decision**: Docker Compose for local development, with a migration path to K3s (lightweight Kubernetes).
 
@@ -200,7 +210,107 @@ Each `@rhizomatic/*` package is an independent module with:
 
 ---
 
-## 6. Architecture Decision Records (ADRs)
+## 6. Domain-Driven Design
+
+### 6.1 Ubiquitous language
+
+These terms have precise meanings throughout the codebase, documentation, and conversation. Code identifiers match these terms exactly — no synonyms, no abbreviations in public APIs.
+
+| Term | Definition |
+|------|-----------|
+| **Document** | A single ingested source file (PDF, webpage, spreadsheet, image). The top-level unit of content entering the system. |
+| **Chunk** | A semantically coherent piece of a Document, broken at paragraph or section boundaries. The atomic unit of knowledge extraction. |
+| **Source** | The provenance of a Document — where it came from (a URL domain, a local folder, an upload session). Carries a trust level. |
+| **Entity** | A named thing discovered in content: a person, concept, technology, organization, place. The heart of the rhizome. |
+| **Alias** | An alternative surface form for an Entity ("TS", "typescript", "TypeScript" are aliases of the same Entity). |
+| **Entity resolution** | The process of determining that two surface forms refer to the same Entity and merging them into a single node. |
+| **Topic** | An emergent cluster of related Entities and Chunks. The natural unit of wiki browsing. Can be auto-generated or user-created. |
+| **Note** | User-authored freeform text attached to any node in the graph. The user's voice — their interpretation, questions, connections. |
+| **Tag** | A lightweight flat label applied to any node. For personal organization, not structural classification. |
+| **Mention** | The relationship between a Chunk and an Entity it contains. Carries a confidence score. |
+| **Relationship** | A typed, weighted, sourced connection between two Entities. The `RELATED_TO` edge. Carries weight, kind, and source (auto/manual/inferred). |
+| **Composition** | The automatic inference of transitive relationships. If A is PART_OF B and B is INSTANCE_OF C, the system infers A INSTANCE_OF C. |
+| **Weight decay** | The multiplicative reduction of confidence when composing relationships. Prevents meaningless universal connectivity. |
+| **Ingestion** | The complete process of accepting content, extracting knowledge, and writing it to the graph and search index. |
+| **Extraction** | The NLP subprocess that identifies Entities, relationships, and metadata from text. |
+| **Enrichment** | Augmenting extracted Entities with external data (e.g., Wikidata links). |
+| **Rhizomatic moment** | When a shared Entity connects two previously unrelated Documents, surfacing an unexpected cross-domain link. The system's core value proposition. |
+
+### 6.2 Bounded contexts
+
+Each bounded context owns its domain logic, data, and has a clear public interface. Contexts communicate through well-defined contracts (shared types in `@rhizomatic/common`), never by reaching into each other's internals.
+
+**Ingestion context** (`@rhizomatic/ingestion`, `@rhizomatic/storage`)
+- Responsibility: Accept content, validate it, store the original file, route it for processing, and orchestrate the pipeline.
+- Owns: File validation rules, content type detection, job lifecycle, storage abstraction.
+- Key aggregate: **IngestionJob** — tracks a document from upload through processing to completion. Has states: received → validating → storing → queued → processing → completed | failed.
+- Publishes: `DocumentIngested` event (document ID, file hash, content type).
+
+**Knowledge context** (`@rhizomatic/graph`)
+- Responsibility: Manage the knowledge graph — entities, relationships, topics, composition rules, ontology.
+- Owns: Neo4j schema, Cypher queries, entity resolution, relationship composition, ontology configuration.
+- Key aggregates:
+  - **Document aggregate** — a Document with its Chunks. Chunks are value objects that don't exist independently of their Document. Operations: create, add chunks, link to source.
+  - **Entity aggregate** — an Entity with its aliases and direct relationships. Operations: merge (create or update with resolution), relate, compose.
+  - **Topic aggregate** — a Topic with its contained Entities. Operations: create, add/remove entities, compute overlaps.
+- Publishes: `EntityDiscovered`, `RelationshipCreated`, `TopicFormed` events.
+
+**Search context** (`@rhizomatic/search`)
+- Responsibility: Maintain the search index as a read-optimized projection of the graph. Provide full-text, faceted, and vector search.
+- Owns: Elasticsearch index schemas, query builders, sync logic, embedding storage.
+- Key aggregate: None — this is a read model. It consumes events from the Knowledge context and updates its indexes.
+- Subscribes to: `DocumentIngested`, `EntityDiscovered`, `RelationshipCreated`.
+
+**Presentation context** (`@rhizomatic/api`, `@rhizomatic/web`)
+- Responsibility: Expose knowledge to users through GraphQL, REST, and the web interface. Translate between domain types and UI/API representations.
+- Owns: GraphQL schema, resolvers, REST endpoints, React components, page routing.
+- Key aggregate: None — this is an anti-corruption layer between the domain and the outside world.
+
+**Annotation context** (Note and Tag operations, cuts across Knowledge and Search)
+- Responsibility: Manage user-created content (Notes, Tags) and its integration into the graph and search index.
+- Owns: Bidirectional link detection (Obsidian-style), Note rendering (markdown), Tag governance (deduplication, slugification).
+- Key aggregate: **Note** — a Note with its target node reference and auto-detected mentions.
+
+### 6.3 Aggregates and consistency boundaries
+
+| Aggregate | Root entity | Children / value objects | Invariants |
+|-----------|------------|------------------------|------------|
+| Document | `:Document` | `:Chunk` (ordered list) | Chunks are contiguous and cover the full document. Position is sequential. File hash is unique. |
+| Entity | `:Entity` | Aliases (string list) | Name is unique after resolution. Aliases are lowercase-normalized. MentionCount reflects actual MENTIONS edges. |
+| Topic | `:Topic` | Entity memberships | A Topic contains at least one Entity. Overlap counts are consistent with actual shared entities. |
+| IngestionJob | Job record | Processing stages | State transitions are monotonic (cannot go backward). Exactly one terminal state (completed or failed). |
+| Note | `:Note` | Auto-detected mentions | Content is valid markdown. ANNOTATES edge targets exactly one node. |
+
+**Consistency rules:**
+- Within an aggregate: strong consistency. Creating a Document and its Chunks is a single transaction.
+- Between aggregates: eventual consistency. When an Entity is discovered, the search index is updated asynchronously.
+- The Knowledge context is the source of truth. The Search context is a projection that can be rebuilt from the graph at any time.
+
+### 6.4 Domain events
+
+Events flow between bounded contexts to maintain loose coupling. In Phase 1, events are method calls within the same process. In Phase 2 (when scaling), they can be promoted to Redis pub/sub or a proper event bus without changing the domain logic.
+
+| Event | Published by | Consumed by | Payload |
+|-------|-------------|-------------|---------|
+| `DocumentIngested` | Ingestion | Knowledge, Search | documentId, fileHash, contentType, sourceId |
+| `ChunksCreated` | Knowledge | Search | documentId, chunkIds[], chunkContents[] |
+| `EntityDiscovered` | Knowledge | Search, Annotation | entityId, name, kind, sourceChunkId |
+| `RelationshipCreated` | Knowledge | Search | fromEntityId, toEntityId, type, weight |
+| `TopicFormed` | Knowledge | Search | topicId, name, entityIds[] |
+| `NoteCreated` | Annotation | Knowledge, Search | noteId, content, targetNodeId, mentionedEntityIds[] |
+| `TagApplied` | Annotation | Search | tagName, targetNodeId, targetNodeType |
+
+### 6.5 Anti-corruption layers
+
+- **Ingestion ↔ External formats**: The ingestion adapters (PDF, DOCX, CSV, HTML, image) are anti-corruption layers that translate messy external formats into the clean `ExtractedContent` type. External format quirks never leak into the domain.
+- **Knowledge ↔ Neo4j**: The `@rhizomatic/graph` query builders are an anti-corruption layer around Cypher. Domain code works with TypeScript types (`Entity`, `Document`, `Chunk`), never with raw Neo4j records or Cypher strings.
+- **Search ↔ Elasticsearch**: The `@rhizomatic/search` client translates between domain types and ES document structures. Index mappings are internal to the search context.
+- **Presentation ↔ Domain**: GraphQL resolvers translate between domain aggregates and API response shapes. The frontend never sees internal domain types directly.
+- **Knowledge ↔ External knowledge graphs**: Wikidata/DBpedia enrichment is an anti-corruption layer that translates external ontologies (Wikidata's property model) into Rhizomatic's entity model. External schema changes don't break the internal graph.
+
+---
+
+## 7. Architecture Decision Records (ADRs)
 
 ### ADR-001: TypeScript over Rust for primary language
 - **Status**: Accepted
@@ -245,11 +355,23 @@ Each `@rhizomatic/*` package is an independent module with:
 - **Rationale**: Each tool adds a distinct dimension to the knowledge graph. Tika simplifies ingestion. Wikidata extends the graph beyond local knowledge. Temporal properties enable evolution tracking. GNNs and GraphRAG are Phase 2 because they require a meaningful graph to operate on.
 - **Consequences**: Phase 1 scope is larger but each tool integrates at a well-defined point. Phase 2 adds new packages (`@rhizomatic/vector`, `@rhizomatic/rag`). Docker Compose will eventually include Qdrant as a service.
 
+### ADR-006: GraphQL as the primary API protocol
+- **Status**: Accepted
+- **Context**: Need an API protocol between the frontend and backend. Options: REST, GraphQL, tRPC.
+- **Decision**: GraphQL via Mercurius (Fastify plugin), with REST endpoints for file upload and health checks.
+- **Rationale**:
+  - Rhizomatic's data is inherently graph-shaped and queries are inherently variable-depth. When browsing an Entity wiki page, the frontend may need the entity, its relationships, mentioning documents, and parent topics — all in one request. REST would either over-fetch (fat endpoint returning everything) or require 4+ round trips. GraphQL lets the frontend ask for exactly the subgraph it needs.
+  - Different views need different query shapes from the same data. The graph explorer needs shallow queries (names and edges). The wiki page needs deeper queries (entities + related docs + notes). The search page needs flat results. One GraphQL schema serves all three without dedicated endpoints for each view.
+  - Neo4j's Cypher queries map naturally to GraphQL resolvers. A `relatedEntities` field resolver translates directly to a `MATCH (e)-[r:RELATED_TO]-(connected)` Cypher query. Composed relationships from the composition rules can be exposed as an `inferredConnections` field.
+  - tRPC was considered but rejected: it couples frontend and backend TypeScript tightly, which conflicts with the goal of a clean API boundary that could serve other clients (CLI, mobile, external tools) in the future.
+  - REST is retained for operations that don't benefit from GraphQL's flexibility: `/health` (simple status check), `/upload` (multipart file streaming). These are better served by straightforward HTTP endpoints.
+- **Consequences**: Frontend uses a typed GraphQL client (urql or graphql-request with codegen). Resolvers are implemented incrementally as features are built. Schema serves as living API documentation.
+
 ---
 
-## 7. Infrastructure
+## 8. Infrastructure
 
-### 7.1 Docker Compose (Local Development)
+### 8.1 Docker Compose (Local Development)
 
 Single command startup: `docker compose up -d`
 
@@ -270,19 +392,9 @@ Single command startup: `docker compose up -d`
 
 **K8s migration path**: Each Compose service maps to a Kubernetes Deployment + Service. Volume claims become PersistentVolumeClaims. Environment variables become ConfigMaps/Secrets. The translation is mechanical.
 
-### 7.2 Configuration
+### 8.2 Configuration
 
 Environment variables loaded from `.env` file (copied from `.env.example`). Typed config schemas in `@rhizomatic/common` validate all values at startup using Effect Schema — the app fails fast with clear messages if config is wrong.
-
----
-
-## 8. Open Questions
-
-- [ ] Graph data model / ontology design — what node types, relationship types, and properties?
-- [ ] Ingestion pipeline detail — how does content flow from upload to graph?
-- [ ] Search strategy — how do full-text, graph traversal, and vector search combine?
-- [ ] Wiki page structure — how do graph nodes map to browsable pages?
-- [ ] Effect Schema vs. Zod for runtime validation — evaluate once Effect is integrated
 
 ---
 
@@ -521,6 +633,10 @@ All tools below are committed for inclusion. Phase assignments indicate implemen
 - [ ] Composition rule governance — max chain depth to prevent runaway inference in dense subgraphs?
 - [ ] GNN minimum data threshold — what graph size justifies structural embedding training?
 - [ ] Tika vs. custom adapters — evaluate extraction quality tradeoffs during scaffolding
+
+---
+
+## Appendix A: Scope Comparison
 
 | Concern | Personal | Small Team | Enterprise |
 |---------|----------|------------|------------|

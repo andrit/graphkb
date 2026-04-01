@@ -151,11 +151,10 @@ export const createJob = (
 export const IngestionServiceLive: Layer.Layer<
   IngestionService,
   never,
- FileStorage
+  FileStorage
 > = Layer.effect(
   IngestionService,
   Effect.gen(function* () {
-  
     const storage = yield* FileStorage;
 
     return {

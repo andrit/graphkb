@@ -40,6 +40,7 @@ program
     const config = loadConfigFromEnv();
     console.log("Checking infrastructure health...");
 
+    // TODO: Ping each service and report status
     console.log(`  Neo4j:         [ ] ${config.neo4j.uri}`);
     console.log(`  Elasticsearch: [ ] ${config.elasticsearch.url}`);
     console.log(`  Redis:         [ ] ${config.redis.url}`);
