@@ -192,6 +192,51 @@ services:
     networks:
       - rhizomatic-net
 
+  # --------------------------------------------------------------------------
+  # Apache Tika — Document Extraction Service
+  # --------------------------------------------------------------------------
+  # Extracts text and metadata from binary document formats (PDF, DOCX,
+  # XLSX, PPTX, images via OCR). Runs as an HTTP service — the TypeScript
+  # app sends file buffers and receives extracted text + metadata.
+  #
+  # REST API: http://localhost:9998
+  #   PUT /tika          → extracted text (set Accept header for format)
+  #   PUT /meta          → document metadata as JSON
+  #   PUT /detect/stream → MIME type detection
+  #   GET /tika          → health check
+  #
+  # Memory:
+  #   Tika runs on the JVM. 1GB limit is comfortable for most documents.
+  #   Very large PDFs (100+ pages with images) may need more.
+  #
+  # OCR:
+  #   The default Tika image includes Tesseract for image text extraction.
+  #   OCR quality depends on input image quality.
+  #
+  # Optional:
+  #   If you don't need binary format extraction, you can comment out this
+  #   service. The app will gracefully degrade to plain-text fallback
+  #   for PDF/DOCX/XLSX/PPTX/image files.
+  # --------------------------------------------------------------------------
+  tika:
+    image: apache/tika:latest
+    container_name: rhizomatic-tika
+    restart: unless-stopped
+    ports:
+      - "9998:9998"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9998/tika || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+    networks:
+      - rhizomatic-net
+
 # ============================================================================
 # Volumes — persistent storage across container restarts
 # ============================================================================

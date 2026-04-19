@@ -1,120 +1,131 @@
-# Rhizomatic
+# Rhizomatic — Knowledge Base System
 
-A rhizomatic knowledge base — understanding emerges from connections.
+> Understanding emerges from connections. Start anywhere.
 
-Rhizomatic ingests diverse content (documents, spreadsheets, images, web pages), extracts structured knowledge into a graph database, and surfaces unexpected connections through wiki-style browsing, powerful search, and interactive graph exploration.
-
-Named after Deleuze and Guattari's concept of the *rhizome* — a structure with no fixed center, no hierarchy, where any point can connect to any other.
-
-## Architecture
-
-```
-Ingest → Extract → Model → Store → Index → Surface
-```
-
-| Layer | Technology | Purpose |
-|-------|-----------|---------|
-| Ingestion | TypeScript + Apache Tika | Accept diverse content, normalize to common format |
-| Processing | Python (spaCy, sentence-transformers) | NLP, entity extraction, embeddings |
-| Graph | Neo4j | Knowledge graph with typed composition |
-| Search | Elasticsearch | Full-text, faceted, and vector search |
-| Queue | Redis + BullMQ | Async job processing between TS and Python |
-| API | Fastify + GraphQL | Unified gateway |
-| Frontend | Next.js | Wiki browser, search, graph explorer |
-
-## Prerequisites
-
-- **Node.js** >= 22
-- **pnpm** >= 9
-- **Python** >= 3.12
-- **Docker** and **Docker Compose**
+A personal knowledge base that ingests documents, extracts structured knowledge into a graph database, and surfaces unexpected connections through a wiki-style interface.
 
 ## Quick start
 
 ```bash
-# 1. Clone and install
-git clone <repo-url> rhizomatic
-cd rhizomatic
-pnpm install
-
-# 2. Start infrastructure (Neo4j, Elasticsearch, Redis)
+# 1. Start infrastructure (Neo4j, Elasticsearch, Redis)
 pnpm infra:up
 
-# 3. Copy environment config
-cp .env.example .env
+# 2. Install dependencies
+pnpm install
 
-# 4. Initialize database schemas
-pnpm --filter @rhizomatic/cli dev -- init
+# 3. Start the API server (port 4000)
+cd packages/api && pnpm dev
 
-# 5. Start the API and frontend in development mode
-pnpm dev
+# 4. Start the frontend (port 3000)
+cd packages/web && pnpm dev
+
+# 5. Open http://localhost:3000/ingest and upload a file
 ```
 
-### Infrastructure commands
+## Ingestion pipeline
 
-```bash
-pnpm infra:up       # Start Neo4j, Elasticsearch, Redis in Docker
-pnpm infra:down     # Stop containers (data preserved)
-pnpm infra:reset    # Stop and delete all data (fresh start)
-pnpm infra:logs     # Follow container logs
-```
-
-### Service URLs (local development)
-
-| Service | URL |
-|---------|-----|
-| Web UI | http://localhost:3000 |
-| API | http://localhost:4000 |
-| GraphQL Playground | http://localhost:4000/graphiql |
-| Neo4j Browser | http://localhost:7474 |
-| Elasticsearch | http://localhost:9200 |
-
-## Project structure
+The end-to-end pipeline that runs when you upload a file:
 
 ```
-rhizomatic/
-├── packages/                    # TypeScript packages (pnpm workspaces)
-│   ├── common/                  # Shared types, errors, config, utilities
-│   ├── graph/                   # Neo4j client, Cypher queries, ontology
-│   ├── search/                  # Elasticsearch client, indexing, vector search
-│   ├── ingestion/               # Job queue, pipeline orchestration
-│   ├── api/                     # Fastify + GraphQL server
-│   ├── web/                     # Next.js frontend
-│   ├── storage/                 # File storage abstraction
-│   └── cli/                     # Admin and development CLI
-├── services/                    # Python processing services
-│   ├── processor/               # NLP, chunking, entity extraction (spaCy)
-│   ├── embedder/                # Vector embedding generation
-│   └── ocr/                     # Image text extraction (pytesseract)
-├── infra/                       # Docker Compose, K8s manifests
-├── docs/                        # Design doc, ADRs, guides
-└── data/                        # Local file storage (gitignored)
+Upload → Validate → Store → Extract Text → Chunk → NER → Neo4j → Elasticsearch
 ```
 
-## Key design decisions
+**Stage 1 — Validate & detect type** (`@rhizomatic/ingestion/validation`)
+- File size check (max 100MB), content type detection from extension
+- Supports: PDF, DOCX, CSV, XLSX, HTML, Markdown, TXT, images
 
-- **TypeScript + Effect** for the main application — typed errors, dependency injection via Layers, generator syntax for readable async pipelines
-- **Python** for NLP/ML — spaCy, sentence-transformers, pytesseract
-- **Neo4j** for the knowledge graph — Cypher queries, typed relationship composition
-- **Elasticsearch** for search — full-text, faceted, and dense_vector for semantic similarity
-- **Functional programming** throughout — pure functions, Result types, composable pipelines, immutable data
+**Stage 2 — Store original** (`@rhizomatic/storage`)
+- Content-addressable storage (SHA-256 hash as filename)
+- Deduplication: same file content → same hash → no duplicate storage
 
-See `docs/design.md` for the full design document including architecture decisions, graph ontology, and technology roadmap.
+**Stage 3 — Extract text** (`@rhizomatic/ingestion/extractors`)
+- Content-type-specific adapters normalize to `ExtractedContent`
+- Markdown: section detection, heading parsing
+- HTML: tag stripping, heading-based sectioning
+- CSV: header-aware row-to-text conversion
+- Phase 2: Apache Tika for PDF, DOCX, XLSX, images
 
-## Graph ontology
+**Stage 4 — Chunk** (`@rhizomatic/ingestion/chunker`)
+- Splits at paragraph/section boundaries (not arbitrary character positions)
+- Section-aware: respects document structure from extraction
+- Configurable: max/min chunk size, overlap
 
-Two layers: **structural** (system-created from ingestion) and **semantic** (discovered by NLP and curated by you).
+**Stage 5 — Entity extraction** (`@rhizomatic/ingestion/entities`)
+- TypeScript-native NER (Phase 1 — no Python dependency)
+- Multi-strategy: capitalized noun phrases, known tech terms, quoted terms
+- Kind inference from context: person, org, technology, concept, place
+- Co-occurrence relationship discovery within chunks
 
-**Node types:** Document, Chunk, Source, Entity, Topic, Note, Tag
+**Stage 6 — Write to Neo4j** (`@rhizomatic/graph`)
+- Document node + Chunk nodes with HAS_CHUNK and NEXT_CHUNK edges
+- Entity nodes (MERGE — deduplicates by name)
+- MENTIONS edges (Chunk → Entity) with confidence scores
+- RELATED_TO edges between co-occurring entities with weights
+- Source provenance tracking
 
-**Key relationship:** `RELATED_TO` between Entities — carries weight, kind, and source. Typed relationship composition auto-infers transitive connections with weight decay.
+**Stage 7 — Index in Elasticsearch** (`@rhizomatic/search`)
+- Documents, chunks, and entities indexed for full-text search
+- Prepared for vector search (dense_vector mapping, Phase 2)
 
-## Technology roadmap
+## API endpoints
 
-**Phase 1 (current):** Core ingestion pipeline, graph storage, search, wiki interface, Apache Tika, Wikidata linkage, temporal properties, relationship composition.
+| Endpoint | Method | Purpose |
+|----------|--------|---------|
+| `/upload` | POST (multipart) | Upload a file → full ingestion pipeline |
+| `/graphql` | POST | GraphQL queries and mutations |
+| `/graphiql` | GET | GraphiQL interactive query editor |
+| `/health` | GET | Service health check |
 
-**Phase 2:** Qdrant vector database, Graph Neural Networks for structural embeddings, GraphRAG for LLM-powered conversational queries, temporal visualization.
+### Key GraphQL queries
 
-## License
+```graphql
+# Recent documents with entity counts
+{ documents(limit: 10) { id title contentType entityCount } }
 
-TBD
+# Document with chunks and extracted entities
+{ document(id: "doc_xxx") { title chunks { content entities { name kind } } } }
+
+# Entity wiki page with connections and source documents
+{ entity(name: "React") { name kind relatedEntities { entity { name } weight } mentioningDocuments { title } } }
+
+# Full-text search across everything
+{ search(query: "functional programming") { id title content score type } }
+
+# Hub entities (most connected)
+{ hubEntities(limit: 10) { name kind connections } }
+
+# Cross-document bridges (shared entities)
+{ documentBridges { doc1 doc2 sharedEntities } }
+```
+
+## Architecture
+
+```
+packages/
+├── common/      # Shared types, errors, config, utilities (Effect)
+├── graph/       # Neo4j client, Cypher queries, ontology
+├── search/      # Elasticsearch client, indexing, full-text + vector search
+├── storage/     # Content-addressable file storage
+├── ingestion/   # Pipeline: extractors → chunker → NER → orchestrator
+├── api/         # Fastify server: REST upload + GraphQL (Mercurius)
+└── web/         # Next.js frontend: wiki, search, graph explorer, ingest UI
+```
+
+## Frontend pages
+
+- **`/`** — Wiki home: recent documents, entity pills
+- **`/ingest`** — Upload page: drag-and-drop, progress, session history
+- **`/search`** — Live search across documents, chunks, entities
+- **`/graph`** — SVG graph explorer with entity detail panel
+- **`/wiki/doc/[id]`** — Document detail: chunks, extracted entities
+- **`/wiki/entity/[name]`** — Entity page: connections, source documents
+
+## Tech stack
+
+- **TypeScript** — API, frontend, pipeline orchestration (Effect for FP)
+- **Neo4j** — Knowledge graph (Cypher queries, graph ontology)
+- **Elasticsearch** — Full-text search, vector search (Phase 2)
+- **Redis + BullMQ** — Job queue and caching
+- **Fastify + Mercurius** — API server with GraphQL
+- **Next.js** — Wiki frontend with SSR
+- **Docker Compose** — Infrastructure (Neo4j, ES, Redis)

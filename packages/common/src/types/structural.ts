@@ -6,7 +6,7 @@
  */
 
 /** Content types supported by the ingestion layer */
-export type ContentType = "pdf" | "docx" | "csv" | "xlsx" | "html" | "image" | "markdown";
+export type ContentType = "pdf" | "docx" | "pptx" | "csv" | "xlsx" | "html" | "image" | "markdown";
 
 /** Source origin types */
 export type SourceKind = "web" | "file" | "upload" | "api";

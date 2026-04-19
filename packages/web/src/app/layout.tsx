@@ -12,21 +12,67 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body style={{ fontFamily: "system-ui, sans-serif", margin: 0, padding: 0 }}>
-        <nav style={{
-          borderBottom: "1px solid #e5e5e5",
-          padding: "12px 24px",
-          display: "flex",
-          gap: "24px",
-          alignItems: "center",
-        }}>
-          <strong style={{ fontSize: "18px" }}>Rhizomatic</strong>
-          <a href="/" style={{ color: "#666", textDecoration: "none", fontSize: "14px" }}>Wiki</a>
-          <a href="/search" style={{ color: "#666", textDecoration: "none", fontSize: "14px" }}>Search</a>
-          <a href="/graph" style={{ color: "#666", textDecoration: "none", fontSize: "14px" }}>Graph</a>
-          <a href="/ingest" style={{ color: "#666", textDecoration: "none", fontSize: "14px" }}>Ingest</a>
+      <body
+        style={{
+          fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+          margin: 0,
+          padding: 0,
+          backgroundColor: "#fafafa",
+          color: "#1a1a1a",
+        }}
+      >
+        <nav
+          style={{
+            borderBottom: "1px solid #e5e5e5",
+            padding: "0 24px",
+            display: "flex",
+            gap: "0",
+            alignItems: "stretch",
+            backgroundColor: "#fff",
+            height: "48px",
+          }}
+        >
+          <a
+            href="/"
+            style={{
+              fontWeight: 600,
+              fontSize: "16px",
+              color: "#1a1a1a",
+              textDecoration: "none",
+              display: "flex",
+              alignItems: "center",
+              paddingRight: "24px",
+              marginRight: "8px",
+              letterSpacing: "-0.01em",
+            }}
+          >
+            ◇ Rhizomatic
+          </a>
+          {[
+            { href: "/", label: "Wiki" },
+            { href: "/search", label: "Search" },
+            { href: "/graph", label: "Graph" },
+            { href: "/ingest", label: "Ingest" },
+          ].map((link) => (
+            <a
+              key={link.href}
+              href={link.href}
+              style={{
+                color: "#555",
+                textDecoration: "none",
+                fontSize: "13px",
+                display: "flex",
+                alignItems: "center",
+                padding: "0 14px",
+                borderBottom: "2px solid transparent",
+                transition: "color 0.15s",
+              }}
+            >
+              {link.label}
+            </a>
+          ))}
         </nav>
-        <main style={{ padding: "24px", maxWidth: "960px", margin: "0 auto" }}>
+        <main style={{ padding: "28px 24px", maxWidth: "960px", margin: "0 auto" }}>
           {children}
         </main>
       </body>

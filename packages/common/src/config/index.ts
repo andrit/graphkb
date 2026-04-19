@@ -50,6 +50,14 @@ export const AppConfig = Schema.Struct({
 });
 export type AppConfig = typeof AppConfig.Type;
 
+/** Apache Tika extraction service configuration */
+export const TikaConfig = Schema.Struct({
+  url: Schema.String.pipe(Schema.nonEmptyString()),
+  timeoutMs: Schema.Number.pipe(Schema.int(), Schema.positive()),
+  enabled: Schema.Boolean,
+});
+export type TikaConfig = typeof TikaConfig.Type;
+
 /** Complete Rhizomatic configuration */
 export const RhizomaticConfig = Schema.Struct({
   neo4j: Neo4jConfig,
@@ -58,6 +66,7 @@ export const RhizomaticConfig = Schema.Struct({
   storage: StorageConfig,
   processing: ProcessingConfig,
   app: AppConfig,
+  tika: TikaConfig,
 });
 export type RhizomaticConfig = typeof RhizomaticConfig.Type;
 
@@ -98,6 +107,11 @@ export const loadConfigFromEnv = (): RhizomaticConfig => {
       apiPort: Number(env("API_PORT", "4000")),
       webPort: Number(env("WEB_PORT", "3000")),
       logLevel: env("LOG_LEVEL", "debug") as "debug" | "info" | "warn" | "error",
+    },
+    tika: {
+      url: env("TIKA_URL", "http://localhost:9998"),
+      timeoutMs: Number(env("TIKA_TIMEOUT_MS", "30000")),
+      enabled: env("TIKA_ENABLED", "true") === "true",
     },
   };
 };
