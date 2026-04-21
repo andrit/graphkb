@@ -116,7 +116,7 @@ const writeDocumentToGraph = (
         documentId: doc.id,
       };
       const chunkQuery = queries.createChunk(chunkNode);
-      yield* graph.write(chunkQuery.cypher, chunkQuery.params);
+      yield* graph.write(chunkQuery.cypher, { ...chunkQuery.params });
 
       // Create NEXT_CHUNK edges for reading order
       if (chunk.position > 0) {
@@ -333,6 +333,10 @@ export const runIngestionPipeline = (
       ingestedAt: now(),
       summary: extracted.text.slice(0, 300),
       metadata: {
+        author: undefined,
+        year: undefined,
+        pageCount: undefined,
+        language: undefined,
         ...(extracted.metadata as Record<string, unknown>),
         wordCount: extracted.text.split(/\s+/).length,
         fileName,

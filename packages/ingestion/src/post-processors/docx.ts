@@ -53,7 +53,7 @@ const parseHtmlSections = (html: string): ContentSection[] => {
 
   for (const part of parts) {
     const headingMatch = part.match(/<h([1-6])[^>]*>([\s\S]*?)<\/h[1-6]>/i);
-    if (headingMatch) {
+    if (headingMatch?.[1] && headingMatch[2]) {
       currentHeading = stripHtml(headingMatch[2]);
       currentLevel = parseInt(headingMatch[1], 10);
     } else {
@@ -80,7 +80,7 @@ const extractTables = (html: string): TabularSheet[] => {
   let tableIndex = 0;
 
   while ((tableMatch = tablePattern.exec(html)) !== null) {
-    const tableHtml = tableMatch[1];
+    const tableHtml = tableMatch[1] ?? "";
     const rows: string[][] = [];
     const rowPattern = /<tr[^>]*>([\s\S]*?)<\/tr>/gi;
     let rowMatch: RegExpExecArray | null;
@@ -90,8 +90,8 @@ const extractTables = (html: string): TabularSheet[] => {
       const cellPattern = /<t[dh][^>]*>([\s\S]*?)<\/t[dh]>/gi;
       let cellMatch: RegExpExecArray | null;
 
-      while ((cellMatch = cellPattern.exec(rowMatch[1])) !== null) {
-        cells.push(stripHtml(cellMatch[1]).trim());
+      while ((cellMatch = cellPattern.exec(rowMatch[1] ?? "")) !== null) {
+        cells.push(stripHtml(cellMatch[1] ?? "").trim());
       }
 
       if (cells.length > 0) {
@@ -100,7 +100,7 @@ const extractTables = (html: string): TabularSheet[] => {
     }
 
     if (rows.length > 0) {
-      const headers = rows[0];
+      const headers = rows[0]!;
       const dataRows = rows.slice(1);
       tables.push({
         name: `Table ${tableIndex + 1}`,

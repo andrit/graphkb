@@ -6,21 +6,36 @@ A personal knowledge base that ingests documents, extracts structured knowledge 
 
 ## Quick start
 
-```bash
-# 1. Start infrastructure (Neo4j, Elasticsearch, Redis)
-pnpm infra:up
+### Prerequisites
 
-# 2. Install dependencies
+- **Node.js ≥ 22** and **pnpm ≥ 9**
+- **Docker** (for Neo4j, Elasticsearch, Redis, Tika)
+
+### Setup
+
+```bash
+# 1. Install dependencies
 pnpm install
 
-# 3. Start the API server (port 4000)
+# 2. Build all workspace packages (CRITICAL — resolves dist/ imports)
+pnpm -r build
+
+# 3. Start infrastructure (Neo4j, Elasticsearch, Redis, Tika)
+pnpm infra:up
+
+# 4. Wait for services to be healthy
+docker compose -f infra/docker-compose.yml ps   # all should show "healthy"
+
+# 5. Start the API server (port 4000)
 cd packages/api && pnpm dev
 
-# 4. Start the frontend (port 3000)
+# 6. Start the frontend (port 3000, separate terminal)
 cd packages/web && pnpm dev
 
-# 5. Open http://localhost:3000/ingest and upload a file
+# 7. Open http://localhost:3000/ingest and upload a file
 ```
+
+> **If you get `ERR_MODULE_NOT_FOUND`**: you skipped step 2. Workspace packages export from `dist/` which must be compiled first. Run `pnpm -r build` from the repo root.
 
 ## Ingestion pipeline
 
@@ -32,18 +47,18 @@ Upload → Validate → Store → Extract Text → Chunk → NER → Neo4j → E
 
 **Stage 1 — Validate & detect type** (`@rhizomatic/ingestion/validation`)
 - File size check (max 100MB), content type detection from extension
-- Supports: PDF, DOCX, CSV, XLSX, HTML, Markdown, TXT, images
+- Supports: PDF, DOCX, PPTX, CSV, XLSX, HTML, Markdown, TXT, images
 
 **Stage 2 — Store original** (`@rhizomatic/storage`)
 - Content-addressable storage (SHA-256 hash as filename)
 - Deduplication: same file content → same hash → no duplicate storage
 
 **Stage 3 — Extract text** (`@rhizomatic/ingestion/extractors`)
-- Content-type-specific adapters normalize to `ExtractedContent`
-- Markdown: section detection, heading parsing
-- HTML: tag stripping, heading-based sectioning
-- CSV: header-aware row-to-text conversion
-- Phase 2: Apache Tika for PDF, DOCX, XLSX, images
+- Two-tier strategy: native extractors for text formats, Apache Tika for binary formats
+- **Native** (in-process, no dependencies): Markdown, HTML, CSV
+- **Tika** (HTTP service, format-specific post-processors): PDF, DOCX, XLSX, PPTX, images/OCR
+- Graceful degradation: if Tika is unavailable, binary formats fall back to plain-text extraction
+- All adapters normalize to `ExtractedContent` — downstream stages don't know which strategy was used
 
 **Stage 4 — Chunk** (`@rhizomatic/ingestion/chunker`)
 - Splits at paragraph/section boundaries (not arbitrary character positions)
@@ -74,7 +89,7 @@ Upload → Validate → Store → Extract Text → Chunk → NER → Neo4j → E
 | `/upload` | POST (multipart) | Upload a file → full ingestion pipeline |
 | `/graphql` | POST | GraphQL queries and mutations |
 | `/graphiql` | GET | GraphiQL interactive query editor |
-| `/health` | GET | Service health check |
+| `/health` | GET | Service health check (API, Neo4j, Elasticsearch, Tika) |
 
 ### Key GraphQL queries
 
@@ -96,6 +111,9 @@ Upload → Validate → Store → Extract Text → Chunk → NER → Neo4j → E
 
 # Cross-document bridges (shared entities)
 { documentBridges { doc1 doc2 sharedEntities } }
+
+# Service health
+{ health { api neo4j elasticsearch tika } }
 ```
 
 ## Architecture
@@ -106,7 +124,7 @@ packages/
 ├── graph/       # Neo4j client, Cypher queries, ontology
 ├── search/      # Elasticsearch client, indexing, full-text + vector search
 ├── storage/     # Content-addressable file storage
-├── ingestion/   # Pipeline: extractors → chunker → NER → orchestrator
+├── ingestion/   # Pipeline: extractors → Tika client → chunker → NER → orchestrator
 ├── api/         # Fastify server: REST upload + GraphQL (Mercurius)
 └── web/         # Next.js frontend: wiki, search, graph explorer, ingest UI
 ```
@@ -125,7 +143,19 @@ packages/
 - **TypeScript** — API, frontend, pipeline orchestration (Effect for FP)
 - **Neo4j** — Knowledge graph (Cypher queries, graph ontology)
 - **Elasticsearch** — Full-text search, vector search (Phase 2)
+- **Apache Tika** — Binary document extraction (PDF, DOCX, XLSX, PPTX, OCR)
 - **Redis + BullMQ** — Job queue and caching
 - **Fastify + Mercurius** — API server with GraphQL
 - **Next.js** — Wiki frontend with SSR
-- **Docker Compose** — Infrastructure (Neo4j, ES, Redis)
+- **Docker Compose** — Local infrastructure (Neo4j, ES, Redis, Tika)
+- **Terraform** — Cloud deployment (AWS ECS, OpenSearch, ElastiCache)
+
+## Documentation
+
+| Document | Location |
+|----------|----------|
+| **Onboarding guide** | `ONBOARDING.md` |
+| **Design document** | `docs/rhizomatic-design-doc.md` |
+| **Architecture Decision Records** | `docs/adrs/` |
+| **Setup guides** | `docs/guides/` |
+| **Terraform IaC** | `infra/terraform/README.md` |

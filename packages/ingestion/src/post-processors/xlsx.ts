@@ -59,7 +59,7 @@ const parseSheetsFromTsv = (text: string): TabularSheet[] => {
       if (currentSheet.lines.length > 0) {
         sheetBlocks.push(currentSheet);
       }
-      currentSheet = { name: sheetMatch[1].trim(), lines: [] };
+      currentSheet = { name: sheetMatch[1]?.trim() ?? "Sheet", lines: [] };
     } else {
       currentSheet.lines.push(line);
     }
@@ -70,7 +70,7 @@ const parseSheetsFromTsv = (text: string): TabularSheet[] => {
 
   return sheetBlocks.map((block) => {
     const rows = block.lines.map((line) => line.split("\t"));
-    const headers = rows.length > 0 ? rows[0] : [];
+    const headers = rows.length > 0 ? rows[0]! : [];
     const dataRows = rows.slice(1);
 
     return {
@@ -92,7 +92,7 @@ const parseSheetsFromHtml = (html: string): TabularSheet[] => {
     s.replace(/<[^>]+>/g, "").replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").trim();
 
   while ((match = tablePattern.exec(html)) !== null) {
-    const tableHtml = match[1];
+    const tableHtml = match[1] ?? "";
     const rows: string[][] = [];
     const rowPattern = /<tr[^>]*>([\s\S]*?)<\/tr>/gi;
     let rowMatch: RegExpExecArray | null;
@@ -102,8 +102,8 @@ const parseSheetsFromHtml = (html: string): TabularSheet[] => {
       const cellPattern = /<t[dh][^>]*>([\s\S]*?)<\/t[dh]>/gi;
       let cellMatch: RegExpExecArray | null;
 
-      while ((cellMatch = cellPattern.exec(rowMatch[1])) !== null) {
-        cells.push(stripTags(cellMatch[1]));
+      while ((cellMatch = cellPattern.exec(rowMatch[1] ?? "")) !== null) {
+        cells.push(stripTags(cellMatch[1] ?? ""));
       }
       if (cells.length > 0) rows.push(cells);
     }
@@ -111,7 +111,7 @@ const parseSheetsFromHtml = (html: string): TabularSheet[] => {
     if (rows.length > 0) {
       sheets.push({
         name: `Sheet${idx + 1}`,
-        headers: rows[0],
+        headers: rows[0]!,
         rows: rows.slice(1),
       });
       idx++;

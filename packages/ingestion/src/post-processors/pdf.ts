@@ -33,7 +33,7 @@ const reflowText = (text: string): string => {
   let buffer = "";
 
   for (let i = 0; i < lines.length; i++) {
-    const line = lines[i].trimEnd();
+    const line = lines[i]!.trimEnd();
     const nextLine = i + 1 < lines.length ? lines[i + 1]?.trim() ?? "" : "";
 
     if (line === "") {
@@ -147,7 +147,7 @@ const parsePdfSections = (text: string): ContentSection[] => {
   };
 
   for (let i = 0; i < lines.length; i++) {
-    const line = lines[i].trim();
+    const line = lines[i]!.trim();
     const nextLine = lines[i + 1]?.trim() ?? "";
 
     // Detect heading-like lines: all caps, short, followed by content
@@ -164,7 +164,7 @@ const parsePdfSections = (text: string): ContentSection[] => {
       flush();
       currentHeading = line;
     } else {
-      currentContent.push(lines[i]);
+      currentContent.push(lines[i]!);
     }
   }
 

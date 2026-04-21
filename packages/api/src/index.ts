@@ -175,7 +175,7 @@ const buildResolvers = (
         ),
       );
       if (records.length === 0) return null;
-      const r = records[0];
+      const r = records[0]!;
       const doc = recordToDoc(r.get("d"));
       const chunks = (r.get("chunks") as any[]).filter((c: any) => c.id != null);
       return {
@@ -211,7 +211,7 @@ const buildResolvers = (
         ),
       );
       if (records.length === 0) return null;
-      const r = records[0];
+      const r = records[0]!;
       const entity = r.get("e").properties;
       return {
         ...entity,
@@ -378,9 +378,11 @@ export const createServer = (config: RhizomaticConfig) =>
     const app = Fastify({ logger: config.app.logLevel === "debug" });
 
     // Register multipart
-    await app.register(fastifyMultipart, {
-      limits: { fileSize: 100 * 1024 * 1024 }, // 100MB
-    });
+    yield* Effect.promise(() =>
+      app.register(fastifyMultipart, {
+        limits: { fileSize: 100 * 1024 * 1024 }, // 100MB
+      }),
+    );
 
     // Health check (REST)
     app.get("/health", async () => ({
@@ -428,11 +430,13 @@ export const createServer = (config: RhizomaticConfig) =>
 
     // Register GraphQL via Mercurius
     const resolvers = buildResolvers(graphClient, searchClient, tikaClient);
-    await app.register(mercurius, {
-      schema,
-      resolvers,
-      graphiql: true, // GraphiQL UI at /graphiql
-    });
+    yield* Effect.promise(() =>
+      app.register(mercurius, {
+        schema,
+        resolvers,
+        graphiql: true, // GraphiQL UI at /graphiql
+      }),
+    );
 
     return {
       start: () =>

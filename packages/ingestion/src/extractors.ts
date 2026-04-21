@@ -24,7 +24,7 @@ import { hashContent } from "@rhizomatic/common";
 /** Detect heading level from markdown-style markers */
 const detectHeadingLevel = (line: string): number | null => {
   const match = line.match(/^(#{1,6})\s/);
-  if (match) return match[1].length;
+  if (match?.[1]) return match[1].length;
   // Underline-style headings
   if (/^={3,}$/.test(line.trim())) return 1;
   if (/^-{3,}$/.test(line.trim())) return 2;
@@ -54,7 +54,8 @@ const parseSections = (text: string): ContentSection[] => {
   };
 
   for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
+    const line = lines[i]!;
+    const nextLine = lines[i + 1];
     const headingLevel = detectHeadingLevel(line);
 
     if (headingLevel !== null) {
@@ -62,18 +63,17 @@ const parseSections = (text: string): ContentSection[] => {
       currentHeading = line.replace(/^#{1,6}\s/, "").trim();
       currentLevel = headingLevel;
     } else if (
-      i + 1 < lines.length &&
-      /^={3,}$/.test(lines[i + 1].trim()) &&
+      nextLine !== undefined &&
+      /^={3,}$/.test(nextLine.trim()) &&
       line.trim().length > 0
     ) {
-      // Next line is === underline → this line is an h1
       flush();
       currentHeading = line.trim();
       currentLevel = 1;
-      i++; // skip the underline
+      i++;
     } else if (
-      i + 1 < lines.length &&
-      /^-{3,}$/.test(lines[i + 1].trim()) &&
+      nextLine !== undefined &&
+      /^-{3,}$/.test(nextLine.trim()) &&
       line.trim().length > 0
     ) {
       flush();
@@ -96,7 +96,7 @@ const parseSections = (text: string): ContentSection[] => {
 /** Extract title from markdown (first h1 or first line) */
 const extractMarkdownTitle = (text: string): string | undefined => {
   const h1Match = text.match(/^#\s+(.+)$/m);
-  if (h1Match) return h1Match[1].trim();
+  if (h1Match?.[1]) return h1Match[1].trim();
   const firstLine = text.split("\n").find((l) => l.trim().length > 0);
   return firstLine?.trim().slice(0, 100);
 };
@@ -184,7 +184,7 @@ const parseHtmlSections = (html: string): ContentSection[] => {
 
   for (const part of parts) {
     const headingMatch = part.match(/<h([1-6])[^>]*>([\s\S]*?)<\/h[1-6]>/i);
-    if (headingMatch) {
+    if (headingMatch?.[1] && headingMatch[2]) {
       currentHeading = stripHtml(headingMatch[2]);
       currentLevel = parseInt(headingMatch[1], 10);
     } else {
@@ -256,7 +256,7 @@ export const extractCsv = (
 ): ExtractedContent => {
   const text = content.toString("utf-8");
   const lines = text.split("\n").filter((l) => l.trim());
-  const headers = lines.length > 0 ? parseCsvLine(lines[0]) : [];
+  const headers = lines.length > 0 ? parseCsvLine(lines[0]!) : [];
   const rows = lines.slice(1).map(parseCsvLine);
 
   // Build a text representation for NLP processing

@@ -93,10 +93,6 @@ const TECH_TERMS = new Set([
 const isStopWord = (word: string): boolean =>
   STOP_WORDS.has(word.toLowerCase());
 
-/** Check if a string looks like a proper noun phrase */
-const isProperNoun = (text: string): boolean =>
-  /^[A-Z][a-z]+(\s+[A-Z][a-z]+)*$/.test(text);
-
 /** Normalize an entity name to canonical form */
 const canonicalize = (name: string): string =>
   name.trim().replace(/\s+/g, " ");
@@ -179,7 +175,8 @@ export const extractEntities = (text: string): ExtractedEntity[] => {
   let match: RegExpExecArray | null;
 
   while ((match = properNounPattern.exec(text)) !== null) {
-    const phrase = match[1].trim();
+    const phrase = match[1]?.trim();
+    if (!phrase) continue;
     if (phrase.split(/\s+/).length >= 2) {
       // Multi-word: higher confidence
       const kind = inferKind(phrase, text.slice(Math.max(0, match.index - 50), match.index + phrase.length + 50));
@@ -206,11 +203,10 @@ export const extractEntities = (text: string): ExtractedEntity[] => {
   // Strategy 3: Quoted terms ("double quotes" or 'single quotes')
   const quotedPattern = /["']([A-Z][^"']{1,60})["']/g;
   while ((match = quotedPattern.exec(text)) !== null) {
-    const quoted = match[1].trim();
-    if (quoted.length > 2) {
-      const kind = inferKind(quoted, text.slice(Math.max(0, match.index - 50), match.index + quoted.length + 50));
-      addEntity(quoted, kind, 0.65);
-    }
+    const quoted = match[1]?.trim();
+    if (!quoted || quoted.length <= 2) continue;
+    const kind = inferKind(quoted, text.slice(Math.max(0, match.index - 50), match.index + quoted.length + 50));
+    addEntity(quoted, kind, 0.65);
   }
 
   return Array.from(entities.values());
@@ -230,8 +226,8 @@ export const extractRelationships = (
 
   for (let i = 0; i < entities.length; i++) {
     for (let j = i + 1; j < entities.length; j++) {
-      const a = entities[i];
-      const b = entities[j];
+      const a = entities[i]!;
+      const b = entities[j]!;
       if (a.canonicalName !== b.canonicalName) {
         triples.push({
           subject: a,

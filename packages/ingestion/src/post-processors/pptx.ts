@@ -41,14 +41,14 @@ const parseSlides = (text: string): ContentSection[] => {
   const slideBlocks = splitIntoSlides(text);
 
   for (let i = 0; i < slideBlocks.length; i++) {
-    const block = slideBlocks[i].trim();
+    const block = slideBlocks[i]!.trim();
     if (!block) continue;
 
     const lines = block.split("\n").filter((l) => l.trim().length > 0);
     if (lines.length === 0) continue;
 
     // First non-empty line is typically the slide title
-    const title = lines[0].trim();
+    const title = lines[0]!.trim();
     const content = lines.slice(1).join("\n").trim();
 
     sections.push({
@@ -104,7 +104,7 @@ const parseSlidesFromHtml = (html: string): ContentSection[] => {
   let position = 0;
 
   while ((match = divPattern.exec(html)) !== null) {
-    const slideHtml = match[1];
+    const slideHtml = match[1] ?? "";
     const content = stripTags(slideHtml);
     if (!content) continue;
 
@@ -125,12 +125,12 @@ const parseSlidesFromHtml = (html: string): ContentSection[] => {
     const plainText = stripTags(html);
     const blocks = plainText.split(/\n{3,}/);
     for (let i = 0; i < blocks.length; i++) {
-      const block = blocks[i].trim();
+      const block = blocks[i]!.trim();
       if (!block) continue;
       const lines = block.split("\n").filter((l) => l.trim());
       sections.push({
         heading: lines[0] ?? `Slide ${i + 1}`,
-        content: lines.slice(1).join("\n").trim() || lines[0] || "",
+        content: lines.slice(1).join("\n").trim() || (lines[0] ?? ""),
         level: 1,
         position: i,
       });
